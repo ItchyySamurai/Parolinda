@@ -206,6 +206,33 @@ button {
 }
 .howto b { color: var(--accent); }
 
+.code {
+  width: 100%;
+  min-height: 84px;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  resize: vertical;
+  word-break: break-all;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.code::placeholder { color: var(--muted); }
+
+.howto .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.howto .sep {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.howto .hint { display: block; margin: 8px 0 0; }
+
 /* ------------------------------------------------------------------- play */
 
 .hud {

@@ -66,6 +66,26 @@
       <p>Gli accenti non servono: <i>città</i> si scrive <b>CITTA</b>.</p>
       <p id="dedica" class="dedica"></p>
     </div>
+
+    <button id="backup-toggle" class="ghost">Backup dei progressi</button>
+    <div id="backup-body" class="howto" hidden>
+      <p>Serve per spostare i punteggi su un altro telefono o tablet, o per
+         rimetterli a posto se si perdono.</p>
+
+      <button id="btn-export" class="ghost wide">Crea il backup</button>
+      <textarea id="backup-code" class="code" readonly hidden></textarea>
+      <div id="export-actions" class="row" hidden>
+        <button id="btn-copy" class="ghost">Copia</button>
+        <button id="btn-share" class="ghost" hidden>Invia</button>
+      </div>
+
+      <p class="sep">Hai già un backup? Incollalo qui sotto.</p>
+      <textarea id="import-code" class="code" placeholder="PAROLINDA1:…"></textarea>
+      <button id="btn-import" class="ghost wide">Ripristina</button>
+      <p id="backup-msg" class="hint"></p>
+      <p class="hint">Il ripristino tiene sempre il punteggio più alto fra i
+         due, quindi non cancella niente.</p>
+    </div>
   </div>
 </section>
 

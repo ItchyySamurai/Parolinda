@@ -276,6 +276,96 @@ function loadStats() {
   return Store.get('stats', { games: 0, words: 0, bestWord: null });
 }
 
+/*
+ * Without this, Android may evict the origin's storage when the device runs
+ * low and her records simply vanish one day with no warning. Chrome grants it
+ * silently for an installed PWA.
+ */
+function requestPersistence() {
+  if (!navigator.storage || !navigator.storage.persist) return;
+  try {
+    navigator.storage.persisted().then(function (already) {
+      if (!already) navigator.storage.persist().catch(function () {});
+    }).catch(function () {});
+  } catch (e) {}
+}
+
+/* ----------------------------------------------------------------- backup */
+
+var BACKUP_PREFIX = 'PAROLINDA1:';
+
+function b64encodeUtf8(str) {
+  var bytes = new TextEncoder().encode(str), bin = '';
+  for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+function b64decodeUtf8(b64) {
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function collectBackup() {
+  var out = { v: 1, records: {}, daily: {}, stats: loadStats() };
+  [120, 180, 300].forEach(function (s) {
+    var r = Store.get('record.' + s, 0);
+    if (r) out.records[s] = r;
+  });
+  var pre = 'parolinda.daily.';
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.indexOf(pre) === 0) {
+      try { out.daily[k.slice(pre.length)] = JSON.parse(localStorage.getItem(k)); } catch (e) {}
+    }
+  }
+  return out;
+}
+
+function encodeBackup(o) { return BACKUP_PREFIX + b64encodeUtf8(JSON.stringify(o)); }
+
+function decodeBackup(text) {
+  var s = String(text || '').trim().replace(/\s+/g, '');
+  if (s.indexOf(BACKUP_PREFIX) !== 0) throw new Error('Codice non valido');
+  var o = JSON.parse(b64decodeUtf8(s.slice(BACKUP_PREFIX.length)));
+  if (!o || o.v !== 1) throw new Error('Codice non valido');
+  return o;
+}
+
+/*
+ * Merge, never overwrite: the higher score always wins. That makes restoring
+ * safe on a device that already has progress, and makes doing it twice a
+ * no-op — which matters when the person tapping is not sure it worked.
+ */
+function applyBackup(o) {
+  var n = { records: 0, daily: 0 };
+
+  Object.keys(o.records || {}).forEach(function (s) {
+    if (o.records[s] > Store.get('record.' + s, 0)) {
+      Store.set('record.' + s, o.records[s]);
+      n.records++;
+    }
+  });
+  Object.keys(o.daily || {}).forEach(function (d) {
+    if (o.daily[d] > Store.get('daily.' + d, 0)) {
+      Store.set('daily.' + d, o.daily[d]);
+      n.daily++;
+    }
+  });
+
+  var mine = loadStats(), theirs = o.stats || {};
+  var merged = {
+    games: Math.max(mine.games || 0, theirs.games || 0),
+    words: Math.max(mine.words || 0, theirs.words || 0),
+    bestWord: mine.bestWord || null
+  };
+  if (theirs.bestWord && (!merged.bestWord || theirs.bestWord.score > merged.bestWord.score)) {
+    merged.bestWord = theirs.bestWord;
+  }
+  Store.set('stats', merged);
+  return n;
+}
+
 /* ------------------------------------------------------------------- game */
 
 var el = {};
@@ -689,6 +779,63 @@ function refreshHome() {
     : '—';
 }
 
+function wireBackup() {
+  var codeBox = $('backup-code');
+  var actions = $('export-actions');
+  var msg = $('backup-msg');
+
+  $('backup-toggle').addEventListener('click', function () {
+    var box = $('backup-body');
+    box.hidden = !box.hidden;
+  });
+
+  $('btn-export').addEventListener('click', function () {
+    var code = encodeBackup(collectBackup());
+    codeBox.value = code;
+    codeBox.hidden = false;
+    actions.hidden = false;
+    $('btn-share').hidden = !navigator.share;
+    msg.textContent = 'Backup pronto. Copialo o invialo a te stessa.';
+  });
+
+  $('btn-copy').addEventListener('click', function () {
+    codeBox.select();
+    var done = function () { msg.textContent = 'Copiato.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(codeBox.value).then(done, function () {
+        msg.textContent = 'Copia a mano il testo qui sopra.';
+      });
+    } else {
+      // Older WebViews: the manual selection above is the fallback.
+      msg.textContent = 'Copia a mano il testo qui sopra.';
+    }
+  });
+
+  $('btn-share').addEventListener('click', function () {
+    if (!navigator.share) return;
+    navigator.share({ title: 'Backup Parolinda', text: codeBox.value })
+      .catch(function () {});
+  });
+
+  $('btn-import').addEventListener('click', function () {
+    var raw = $('import-code').value;
+    if (!raw.trim()) { msg.textContent = 'Incolla prima il codice.'; return; }
+    var data;
+    try {
+      data = decodeBackup(raw);
+    } catch (e) {
+      msg.textContent = 'Codice non valido. Controlla di averlo copiato tutto.';
+      return;
+    }
+    var n = applyBackup(data);
+    refreshHome();
+    msg.textContent = (n.records + n.daily) === 0
+      ? 'Fatto: qui i punteggi erano già uguali o migliori.'
+      : 'Ripristinato: ' + n.records + ' record e ' + n.daily + ' sfide.';
+    $('import-code').value = '';
+  });
+}
+
 function wireUi() {
   el.board = $('board');
   el.trailLine = $('trail-line');
@@ -727,12 +874,15 @@ function wireUi() {
     });
   });
 
+  // Asked again on a real gesture: some browsers only grant it from one.
   $('btn-daily').addEventListener('click', function () {
     Sound.ensure();
+    requestPersistence();
     startGame(DAILY_SECONDS, 'daily');
   });
   $('btn-play').addEventListener('click', function () {
     Sound.ensure();
+    requestPersistence();
     startGame(Store.get('duration', 180), 'free');
   });
   el.btnAgain.addEventListener('click', function () {
@@ -765,12 +915,14 @@ function wireUi() {
     box.hidden = !box.hidden;
   });
 
+  wireBackup();
   wireBoard();
   refreshHome();
 }
 
 function boot() {
   wireUi();
+  requestPersistence();
   fetch('dict.bin')
     .then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
