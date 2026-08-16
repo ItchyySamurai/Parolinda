@@ -88,6 +88,26 @@ identical boards and comparable scores.
 Free play is a fresh random board each time and keeps its own record per round
 length, separate from the daily.
 
+## Progress, and moving it between devices
+
+Progress lives in `localStorage` under the `parolinda.` prefix: a record per
+round length, a best score per daily board, and lifetime stats. The app asks
+for **persistent storage** on load and again on the first tap, so Android
+doesn't evict it when the device runs low — Chrome grants this silently to an
+installed PWA.
+
+`localStorage` is per-device, so **her phone and tablet keep separate scores**,
+and nothing syncs them. Chrome's account sync does not cover it. The daily
+board itself is identical on both, since it comes from the date rather than
+from storage.
+
+*Backup dei progressi* on the home screen closes the gap without a server. It
+encodes everything into a ~220 character string she can copy or send to herself,
+and the other device pastes it back. Restoring **merges by keeping the higher
+score**, never overwriting, so it is safe on a device that already has progress
+and doing it twice changes nothing. Malformed codes are rejected before
+anything is written.
+
 ## The dictionary
 
 `dict.bin` is 2,671,495 Italian word forms in 558 KB.
