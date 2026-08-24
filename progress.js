@@ -14,19 +14,40 @@
 
 /* Points are cumulative across every game ever played, and the ladder is
    deliberately long: at a few hundred points a round, level 2 lands after a
-   couple of games and level 10 takes months of steady play. Anyone already
-   deep in it should still have most of the climb ahead. */
+   couple of games, level 10 after a few weeks, and level 30 after well over a
+   year of steady play. She plays a lot, so the ceiling should stay out of
+   reach for a long time. */
 var LEVELS = [
-  { n: 1,  at: 0,      name: 'Curiosa' },
-  { n: 2,  at: 500,    name: 'Attenta' },
-  { n: 3,  at: 1500,   name: 'Appassionata' },
-  { n: 4,  at: 4000,   name: 'Abile' },
-  { n: 5,  at: 9000,   name: 'Esperta' },
-  { n: 6,  at: 18000,  name: 'Maestra delle parole' },
-  { n: 7,  at: 35000,  name: 'Campionessa' },
-  { n: 8,  at: 60000,  name: 'Fuoriclasse' },
-  { n: 9,  at: 100000, name: 'Enciclopedia vivente' },
-  { n: 10, at: 160000, name: 'Regina delle parole' }
+  { n: 1,  at: 0,       name: 'Curiosa' },
+  { n: 2,  at: 400,     name: 'Attenta' },
+  { n: 3,  at: 1000,    name: 'Volenterosa' },
+  { n: 4,  at: 1900,    name: 'Appassionata' },
+  { n: 5,  at: 3200,    name: 'Costante' },
+  { n: 6,  at: 5000,    name: 'Abile' },
+  { n: 7,  at: 7400,    name: 'Svelta' },
+  { n: 8,  at: 10500,   name: 'Acuta' },
+  { n: 9,  at: 14500,   name: 'Esperta' },
+  { n: 10, at: 19500,   name: 'Sagace' },
+  { n: 11, at: 25500,   name: 'Instancabile' },
+  { n: 12, at: 32500,   name: 'Raffinata' },
+  { n: 13, at: 41000,   name: 'Sapiente' },
+  { n: 14, at: 51000,   name: 'Maestra delle parole' },
+  { n: 15, at: 62500,   name: 'Custode del vocabolario' },
+  { n: 16, at: 76000,   name: 'Tessitrice di lettere' },
+  { n: 17, at: 91500,   name: 'Cercatrice d’oro' },
+  { n: 18, at: 109000,  name: 'Campionessa' },
+  { n: 19, at: 129000,  name: 'Virtuosa' },
+  { n: 20, at: 151000,  name: 'Fuoriclasse' },
+  { n: 21, at: 176000,  name: 'Cacciatrice di parole' },
+  { n: 22, at: 204000,  name: 'Signora delle sillabe' },
+  { n: 23, at: 235000,  name: 'Alchimista delle lettere' },
+  { n: 24, at: 269000,  name: 'Memoria di ferro' },
+  { n: 25, at: 307000,  name: 'Enciclopedia vivente' },
+  { n: 26, at: 349000,  name: 'Oracolo delle parole' },
+  { n: 27, at: 395000,  name: 'Custode dei dizionari' },
+  { n: 28, at: 445000,  name: 'Gran Maestra' },
+  { n: 29, at: 500000,  name: 'Leggenda delle parole' },
+  { n: 30, at: 560000,  name: 'Regina delle parole' }
 ];
 
 function levelFor(points) {

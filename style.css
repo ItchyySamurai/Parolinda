@@ -20,8 +20,8 @@
   --text: #e9f0ea;
   --muted: #92a89a;
   --line: #2b3b33;
-  --bonus-letter: #9a5824;
-  --bonus-word: #2c7048;
+  --bonus-letter: #7d4415;
+  --bonus-word: #235a3a;
 }
 
 * { box-sizing: border-box; }
@@ -604,4 +604,338 @@ h3 { font-size: calc(17px * var(--ts)); }
   color: var(--accent);
   letter-spacing: 1px;
   overflow-wrap: anywhere;
+}
+
+/* ==================================================================
+   Unlockable themes. Every one redefines the same token set, so the
+   whole interface follows without a single component knowing about it.
+   Each was checked to keep text and accents above WCAG AA.
+   ================================================================== */
+
+:root[data-theme="carta"] {
+  --bg: #f4f1e8; --bg-soft: #e7e2d3; --tile: #ffffff; --tile-ink: #2a2620;
+  --tile-sel: #86bf96; --tile-head: #a9d6b5; --accent: #1f5738;
+  --accent-ink: #ffffff; --accent-deep: #133a25; --good: #1f5738;
+  --bad: #a83c36; --dupe: #35648a; --text: #23201a; --muted: #625b4d;
+  --line: #cec7b5; --bonus-letter: #8c4e1e; --bonus-word: #26603d;
+}
+:root[data-theme="notte"] {
+  --bg: #0a0d0c; --bg-soft: #141a18; --tile: #d8ded9; --tile-ink: #121614;
+  --tile-sel: #6fae8b; --tile-head: #8fc9a6; --accent: #6fae8b;
+  --accent-ink: #06170f; --accent-deep: #47765c; --good: #6fae8b;
+  --text: #dfe6e0; --muted: #849489; --line: #232e29;
+}
+:root[data-theme="grano"] {
+  --bg: #14140f; --bg-soft: #211f16; --tile: #f2eddc; --tile-ink: #1f1c12;
+  --tile-sel: #d8b45c; --tile-head: #ecd08a; --accent: #d8b45c;
+  --accent-ink: #241a06; --accent-deep: #967b34; --good: #d8b45c;
+  --text: #efe9d8; --muted: #a49879; --line: #33301f;
+}
+:root[data-theme="inchiostro"] {
+  --bg: #0d1119; --bg-soft: #171e2b; --tile: #e6ebf2; --tile-ink: #131822;
+  --tile-sel: #7aa7d9; --tile-head: #a3c4e8; --accent: #7aa7d9;
+  --accent-ink: #071019; --accent-deep: #4a6f96; --good: #7aa7d9;
+  --text: #e4e9f1; --muted: #8a97ab; --line: #26303f;
+}
+:root[data-theme="oro"] {
+  --bg: #12100b; --bg-soft: #1e1a11; --tile: #f5eeda; --tile-ink: #1c1809;
+  --tile-sel: #e3c063; --tile-head: #f2d98f; --accent: #e3c063;
+  --accent-ink: #241c04; --accent-deep: #9c8237; --good: #e3c063;
+  --text: #f2ead6; --muted: #a69b7d; --line: #332c1b;
+}
+:root[data-theme="lavanda"] {
+  --bg: #14111c; --bg-soft: #211d2c; --tile: #efeaf5; --tile-ink: #1a1622;
+  --tile-sel: #b49ae0; --tile-head: #cdb9ec; --accent: #b49ae0;
+  --accent-ink: #180f26; --accent-deep: #7a629e; --good: #b49ae0;
+  --text: #ece7f3; --muted: #9d94ae; --line: #2f2940;
+}
+:root[data-theme="mare"] {
+  --bg: #0a1518; --bg-soft: #132326; --tile: #e4f0f0; --tile-ink: #10201f;
+  --tile-sel: #6dc3c9; --tile-head: #97dade; --accent: #6dc3c9;
+  --accent-ink: #04181a; --accent-deep: #43858a; --good: #6dc3c9;
+  --text: #e0eeee; --muted: #879d9f; --line: #1f3538;
+}
+:root[data-theme="tramonto"] {
+  --bg: #17110f; --bg-soft: #251b17; --tile: #f5eae2; --tile-ink: #22160f;
+  --tile-sel: #e39a6a; --tile-head: #f2bb91; --accent: #e39a6a;
+  --accent-ink: #2a1206; --accent-deep: #9c6640; --good: #e39a6a;
+  --text: #f2e6de; --muted: #ac9589; --line: #38271f;
+}
+:root[data-theme="neve"] {
+  --bg: #0e1418; --bg-soft: #1a232a; --tile: #eef4f8; --tile-ink: #131b21;
+  --tile-sel: #a9cfe4; --tile-head: #c9e4f2; --accent: #a9cfe4;
+  --accent-ink: #09171f; --accent-deep: #6d93a8; --good: #a9cfe4;
+  --text: #e8f0f5; --muted: #8f9ea9; --line: #26333c;
+}
+:root[data-theme="ciliegio"] {
+  --bg: #1a1215; --bg-soft: #281c21; --tile: #f8e9ee; --tile-ink: #23151a;
+  --tile-sel: #eaa0b8; --tile-head: #f5c1d2; --accent: #eaa0b8;
+  --accent-ink: #2c0d17; --accent-deep: #a26a7d; --good: #eaa0b8;
+  --text: #f5e6ea; --muted: #af939b; --line: #3b2830;
+}
+:root[data-theme="corallo"] {
+  --bg: #17100f; --bg-soft: #261a18; --tile: #f8e8e3; --tile-ink: #251311;
+  --tile-sel: #ef8f7c; --tile-head: #f8b3a4; --accent: #ef8f7c;
+  --accent-ink: #2e0c06; --accent-deep: #a45f51; --good: #ef8f7c;
+  --bad: #e0b0a8; --text: #f7e5e1; --muted: #b0938c; --line: #3a2622;
+}
+:root[data-theme="castagna"] {
+  --bg: #150f0b; --bg-soft: #231911; --tile: #f2e6d5; --tile-ink: #201509;
+  --tile-sel: #c98f4f; --tile-head: #e3b47c; --accent: #c98f4f;
+  --accent-ink: #221503; --accent-deep: #8a6134; --good: #c98f4f;
+  --text: #efe2cf; --muted: #a49179; --line: #35271a;
+}
+:root[data-theme="ghiaccio"] {
+  --bg: #0b1216; --bg-soft: #152128; --tile: #e8f5fa; --tile-ink: #0f1a20;
+  --tile-sel: #86d5e8; --tile-head: #aee6f2; --accent: #86d5e8;
+  --accent-ink: #04161d; --accent-deep: #549aa9; --good: #86d5e8;
+  --text: #e3f1f6; --muted: #8aa4ae; --line: #20323b;
+}
+
+/* Swatches in the collection: background on one diagonal, accent on the
+   other, so a theme is recognisable before it is worn. */
+.swatch { background: linear-gradient(135deg, #101815 0 50%, #7fc79b 50% 100%); }
+.swatch[data-swatch="carta"]      { background: linear-gradient(135deg, #f4f1e8 0 50%, #1f5738 50% 100%); }
+.swatch[data-swatch="notte"]      { background: linear-gradient(135deg, #0a0d0c 0 50%, #6fae8b 50% 100%); }
+.swatch[data-swatch="grano"]      { background: linear-gradient(135deg, #14140f 0 50%, #d8b45c 50% 100%); }
+.swatch[data-swatch="inchiostro"] { background: linear-gradient(135deg, #0d1119 0 50%, #7aa7d9 50% 100%); }
+.swatch[data-swatch="oro"]        { background: linear-gradient(135deg, #12100b 0 50%, #e3c063 50% 100%); }
+.swatch[data-swatch="lavanda"]    { background: linear-gradient(135deg, #14111c 0 50%, #b49ae0 50% 100%); }
+.swatch[data-swatch="mare"]       { background: linear-gradient(135deg, #0a1518 0 50%, #6dc3c9 50% 100%); }
+.swatch[data-swatch="tramonto"]   { background: linear-gradient(135deg, #17110f 0 50%, #e39a6a 50% 100%); }
+.swatch[data-swatch="neve"]       { background: linear-gradient(135deg, #0e1418 0 50%, #a9cfe4 50% 100%); }
+.swatch[data-swatch="ciliegio"]   { background: linear-gradient(135deg, #1a1215 0 50%, #eaa0b8 50% 100%); }
+.swatch[data-swatch="corallo"]    { background: linear-gradient(135deg, #17100f 0 50%, #ef8f7c 50% 100%); }
+.swatch[data-swatch="castagna"]   { background: linear-gradient(135deg, #150f0b 0 50%, #c98f4f 50% 100%); }
+.swatch[data-swatch="ghiaccio"]   { background: linear-gradient(135deg, #0b1216 0 50%, #86d5e8 50% 100%); }
+
+/* ==================================================================
+   Hero, seasonal track, collection, intro. Plus the polish pass.
+   ================================================================== */
+
+.hero { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.logo { margin: 6px 0 0; }
+
+.identity { display: flex; align-items: center; gap: 10px; justify-content: center; }
+.avatar {
+  font-size: calc(21px * var(--ts));
+  color: var(--accent);
+  line-height: 1;
+}
+.player-title {
+  color: var(--muted);
+  font-style: italic;
+  font-size: calc(15px * var(--ts));
+  letter-spacing: .3px;
+}
+
+/* ------------------------------------------------------- tappable panels */
+
+.panel {
+  width: min(360px, 100%);
+  background: var(--bg-soft);
+  border: 0;
+  border-radius: 18px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  transition: transform .08s;
+}
+.panel:active { transform: scale(.985); }
+.row-between {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.chev {
+  color: var(--muted);
+  font-size: calc(13px * var(--ts));
+  white-space: nowrap;
+}
+.season-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sglyph { color: var(--accent); font-size: calc(17px * var(--ts)); }
+#season-name {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: calc(18px * var(--ts));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.two-up {
+  display: flex;
+  gap: 10px;
+  width: min(360px, 100%);
+}
+.two-up .ghost { flex: 1; padding-left: 8px; padding-right: 8px; }
+
+.banner {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: .4px;
+  font-size: calc(19px * var(--ts));
+  background: var(--bg-soft);
+  border-radius: 14px;
+  padding: 10px 18px;
+}
+
+/* ------------------------------------------------------------ season track */
+
+.season-head { gap: 8px; }
+.season-big-glyph {
+  font-size: calc(46px * var(--ts));
+  color: var(--accent);
+  line-height: 1;
+}
+
+.track {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tier {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  opacity: .5;
+  position: relative;
+}
+.tier.reached, .tier.owned { opacity: 1; }
+.tier.reached { border-left: 3px solid var(--accent); }
+.tier.owned { border-left: 3px solid var(--line); }
+.tier-num {
+  flex: none;
+  width: 2em;
+  height: 2em;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 800;
+  font-size: calc(14px * var(--ts));
+}
+.tier.reached .tier-num { background: var(--accent); color: var(--accent-ink); }
+.tier-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.tier-body b { font-size: calc(14px * var(--ts)); color: var(--accent); }
+.tier-body i {
+  font-style: normal;
+  color: var(--muted);
+  font-size: calc(13px * var(--ts));
+  line-height: 1.35;
+}
+.tier-mark { color: var(--accent); font-size: calc(18px * var(--ts)); flex: none; }
+
+.boxed {
+  background: var(--bg-soft);
+  border-radius: 14px;
+  padding: 14px 18px;
+  max-width: 460px;
+  text-align: left;
+}
+
+/* -------------------------------------------------------------- collection */
+
+.collection {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  align-self: stretch;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+}
+.coll-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.coll-item.locked { opacity: .42; cursor: default; }
+.coll-item.on { border-color: var(--accent); }
+.coll-item.on .tbody b { color: var(--accent); }
+.swatch {
+  flex: none;
+  width: 2.1em;
+  height: 2.1em;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+.glyph-big {
+  flex: none;
+  font-size: calc(24px * var(--ts));
+  color: var(--accent);
+  width: 1.4em;
+  text-align: center;
+}
+.collection.avatars { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+
+/* ------------------------------------------------------------------ intro */
+
+.intro-wrap { justify-content: center; }
+.intro-card {
+  background: var(--bg-soft);
+  border-radius: 22px;
+  padding: 26px 24px 22px;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.intro-glyph { font-size: calc(50px * var(--ts)); color: var(--accent); line-height: 1; }
+.intro-card h2 { margin: 0; color: var(--accent); }
+.intro-body {
+  text-align: left;
+  line-height: 1.6;
+  font-size: calc(16.5px * var(--ts));
+  align-self: stretch;
+}
+.intro-body p { margin: 0 0 10px; }
+.intro-body b { color: var(--accent); }
+
+.dots { display: flex; gap: 7px; margin: 2px 0 4px; }
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background .2s, transform .2s;
+}
+.dot.on { background: var(--accent); transform: scale(1.25); }
+
+/* ------------------------------------------------------------------ polish */
+
+.card, .panel, .trophy, .tier, .coll-item, .intro-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+}
+.bar-fill {
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+}
+.tile { transition: background .07s, transform .07s, box-shadow .07s; }
+.screen.active { animation: fade .18s ease-out; }
+@keyframes fade { from { opacity: .35; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.active { animation: none; }
+  .bar-fill { transition: none; }
 }

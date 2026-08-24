@@ -407,7 +407,7 @@ var lastRound = { seconds: 180, mode: 'free' };
 function $(id) { return document.getElementById(id); }
 
 function show(screen) {
-  ['home', 'play', 'over', 'diary'].forEach(function (s) {
+  ['intro', 'home', 'play', 'over', 'diary', 'season', 'collection'].forEach(function (s) {
     $('screen-' + s).classList.toggle('active', s === screen);
   });
 }
@@ -553,6 +553,11 @@ function endGame() {
   game = null;
   releaseWakeLock();
 
+  // Snapshot before anything moves, so we can tell her exactly what changed.
+  var unlocksBefore = unlockSnapshot();
+  var season = currentSeason();
+  var tierBefore = seasonProgress(season).tier;
+
   // Senza fretta has no clock, so it cannot set a record. Everything else it
   // does still counts towards levels, totals and the diary.
   var timed = (g.mode !== 'zen');
@@ -575,6 +580,10 @@ function endGame() {
   });
   Store.set('stats', stats);
 
+  addSeasonPoints(season.id, g.score);
+  var tierAfter = seasonProgress(season).tier;
+  var tieredUp = tierAfter > tierBefore;
+
   var after = levelFor(stats.points);
   var leveledUp = after.level.n > levelFor(pointsBefore).level.n;
 
@@ -585,12 +594,15 @@ function endGame() {
     daysPlayed: Object.keys(days).length, date: todayKey()
   });
 
-  if (leveledUp || (beatIt && prevBest > 0)) Sound.fanfare(); else Sound.over();
+  var freshUnlocks = newlyUnlocked(unlocksBefore);
+
+  if (leveledUp || tieredUp || (beatIt && prevBest > 0)) Sound.fanfare();
+  else Sound.over();
 
   el.finalScore.textContent = String(g.score);
   el.finalWords.textContent = g.found.length + (g.found.length === 1 ? ' parola' : ' parole');
   el.praise.textContent = praiseFor(g, prevBest, beatIt);
-  el.praise.classList.toggle('is-record', beatIt || leveledUp);
+  el.praise.classList.toggle('is-record', beatIt || leveledUp || tieredUp);
 
   if (!timed) {
     el.recordNote.textContent = 'Senza fretta - ' + fmtElapsed(g.elapsed) + ' di gioco';
@@ -607,6 +619,22 @@ function endGame() {
   if (leveledUp) {
     el.levelUp.textContent = 'Livello ' + after.level.n + ' - ' + after.level.name + '!';
   }
+
+  el.tierUp.hidden = !tieredUp;
+  if (tieredUp) {
+    el.tierUp.textContent = season.glyph + '  Traguardo ' + tierAfter + ' di '
+      + SEASON_TIERS.length + ' - ' + season.name + '!';
+  }
+
+  el.newUnlocks.innerHTML = '';
+  el.newUnlocks.hidden = !freshUnlocks.length;
+  freshUnlocks.forEach(function (u) {
+    var li = document.createElement('li');
+    li.className = 'trophy got';
+    li.innerHTML = '<span class="ticon">' + u.glyph + '</span>'
+      + '<span class="tbody"><b>' + u.label + '</b><i>' + u.kind + ' sbloccato</i></span>';
+    el.newUnlocks.appendChild(li);
+  });
 
   el.newTrophies.innerHTML = '';
   el.newTrophies.hidden = !fresh.length;
@@ -847,6 +875,22 @@ document.addEventListener('visibilitychange', function () {
 function refreshHome() {
   $('greeting').textContent = pickGreeting();
 
+  var eq = equipped();
+  applyTheme(eq.theme);
+  $('home-avatar').textContent = avatarGlyph(eq.avatar);
+  var tt = titleText(eq.title);
+  $('home-title').textContent = tt;
+  $('home-title').hidden = !tt;
+
+  var season = currentSeason();
+  var sp = seasonProgress(season);
+  $('season-glyph').textContent = season.glyph;
+  $('season-name').textContent = season.label;
+  $('season-bar').style.width = sp.pct + '%';
+  $('season-next').textContent = sp.nextAt === null
+    ? 'Stagione completata'
+    : 'Traguardo ' + sp.tier + ' di ' + sp.total + ' \u00b7 mancano ' + sp.toNext + ' punti';
+
   var d = Store.get('duration', 180);
   Array.prototype.forEach.call(el.durationBtns, function (b) {
     b.classList.toggle('on', Number(b.dataset.seconds) === d);
@@ -863,12 +907,200 @@ function refreshHome() {
   var lv = levelFor(s.points || 0);
   el.levelName.textContent = 'Livello ' + lv.level.n + ' - ' + lv.level.name;
   el.levelBar.style.width = lv.pct + '%';
+  $('level-next').textContent = lv.next
+    ? 'Mancano ' + lv.toNext + ' punti per diventare ' + lv.next.name
+    : 'Ultimo livello raggiunto';
 
   el.statGames.textContent = String(s.games);
   el.statWords.textContent = String(s.words);
   el.statBest.textContent = s.bestWord
     ? s.bestWord.word.toUpperCase() + ' · ' + s.bestWord.score
     : '—';
+}
+
+var APP_VERSION = 2;
+
+/* Shown once, the first time she ever opens it. */
+var INTRO_SLIDES = [
+  { glyph: '\u2740', title: 'Benvenuta',
+    body: '<p>Questo &egrave; <b>Parolinda</b>: si cercano parole in un quadrato '
+        + 'di lettere.</p><p>Pi&ugrave; parole trovi, pi&ugrave; punti fai.</p>' },
+  { glyph: '\u261E', title: 'Come si gioca',
+    body: '<p>Collega le lettere <b>vicine</b>, anche in diagonale.</p>'
+        + '<p><b>Trascina il dito</b> sulle lettere, oppure <b>tocca</b> una '
+        + 'lettera alla volta e poi premi <b>\u2713</b>. Vanno bene entrambi.</p>' },
+  { glyph: '\u2605', title: 'I punti',
+    body: '<p>Le parole <b>lunghe</b> valgono di pi&ugrave;.</p>'
+        + '<p>Le caselle colorate aiutano: <b>L&times;2</b> raddoppia quella '
+        + 'lettera, <b>P&times;3</b> triplica tutta la parola.</p>'
+        + '<p>Gli accenti non servono: <i>citt&agrave;</i> si scrive <b>CITTA</b>.</p>' },
+  { glyph: '\u25D0', title: 'Tre modi di giocare',
+    body: '<p><b>Sfida del giorno</b>: un tabellone nuovo ogni giorno, uguale '
+        + 'per tutti.</p><p><b>Partita libera</b>: quando vuoi, col tempo che '
+        + 'scegli tu.</p><p><b>Senza fretta</b>: nessun orologio, finisci quando '
+        + 'ti va.</p>' },
+  { glyph: '\u265B', title: 'I tuoi progressi',
+    body: '<p>Ogni partita ti fa salire di <b>livello</b> e riempie il tuo '
+        + '<b>diario</b>: trofei, calendario, temi e titoli da collezionare.</p>'
+        + '<p>Non si perde mai niente: tutto va solo avanti.</p>' }
+];
+
+/* Shown once to someone who already had the older version. */
+var NEWS_SLIDES = [
+  { glyph: '\u2728', title: 'C&rsquo;&egrave; qualcosa di nuovo',
+    body: '<p>Parolinda si &egrave; fatta pi&ugrave; grande. Ecco cosa trovi '
+        + 'da oggi.</p>' },
+  { glyph: '\u2740', title: 'Senza fretta',
+    body: '<p>Un modo di giocare <b>senza orologio</b>.</p><p>Nessun conto alla '
+        + 'rovescia: giochi con calma e premi <b>Ho finito</b> quando vuoi tu.</p>' },
+  { glyph: '\u2605', title: 'Livelli e titoli',
+    body: '<p>Ogni partita ti d&agrave; punti, e i punti ti fanno salire di '
+        + '<b>livello</b>: da <i>Curiosa</i> fino a <i>Regina delle parole</i>.</p>'
+        + '<p>I punti che hai gi&agrave; fatto sono stati contati.</p>' },
+  { glyph: '\u25C6', title: 'Trofei e diario',
+    body: '<p>Ci sono <b>13 trofei</b> da conquistare.</p><p>Nel <b>diario</b> '
+        + 'trovi i tuoi numeri e un <b>calendario</b> con tutte le sfide del '
+        + 'giorno che hai giocato.</p>' },
+  { glyph: '\u2600', title: 'La stagione',
+    body: '<p>Ogni stagione ha <b>8 traguardi</b> con premi: temi, titoli e '
+        + 'simboli da mettere accanto al tuo nome.</p>'
+        + '<p>Le stagioni <b>tornano ogni anno</b>: quello che non prendi ora, '
+        + 'lo prendi la prossima volta. Non c&rsquo;&egrave; fretta e non '
+        + 'si perde niente.</p>' },
+  { glyph: '\u0041', title: 'Si legge meglio',
+    body: '<p>Nel menu puoi scegliere la <b>dimensione del testo</b>: normale, '
+        + 'grande o molto grande.</p><p>E puoi cambiare i <b>colori</b> dalla '
+        + 'tua collezione.</p>' }
+];
+
+var introQueue = [], introIndex = 0, introDone = null;
+
+function renderIntro() {
+  var s = introQueue[introIndex];
+  $('intro-glyph').textContent = s.glyph;
+  $('intro-title').innerHTML = s.title;
+  $('intro-body').innerHTML = s.body;
+
+  var dots = $('intro-dots');
+  dots.innerHTML = '';
+  introQueue.forEach(function (_, i) {
+    var d = document.createElement('span');
+    d.className = 'dot' + (i === introIndex ? ' on' : '');
+    dots.appendChild(d);
+  });
+
+  var last = (introIndex === introQueue.length - 1);
+  $('btn-intro-next').textContent = last ? 'Cominciamo' : 'Avanti';
+  $('btn-intro-skip').hidden = last;
+}
+
+function startIntro(slides, onDone) {
+  introQueue = slides;
+  introIndex = 0;
+  introDone = onDone || null;
+  renderIntro();
+  show('intro');
+}
+
+function finishIntro() {
+  Store.set('seenVersion', APP_VERSION);
+  if (introDone) introDone();
+  refreshHome();
+  show('home');
+}
+
+function maybeIntro() {
+  var seen = Store.get('seenVersion', 0);
+  if (seen >= APP_VERSION) return;
+  var s = loadStats();
+  startIntro((s.games || 0) === 0 ? INTRO_SLIDES : NEWS_SLIDES);
+}
+
+/* ----------------------------------------------------------------- season */
+
+function renderSeason() {
+  var s = currentSeason();
+  var p = seasonProgress(s);
+  var bestEver = bestTierForKey(s.key);
+
+  $('season-heading').textContent = s.label;
+  $('season-big-glyph').textContent = s.glyph;
+  $('season-tier-big').textContent = 'Traguardo ' + p.tier + ' di ' + p.total;
+  $('season-bar2').style.width = p.pct + '%';
+  $('season-note').textContent = p.nextAt === null
+    ? 'Hai completato la stagione. Brava!'
+    : 'Mancano ' + p.toNext + ' punti al traguardo ' + (p.tier + 1)
+      + ' \u00b7 ' + p.points + ' punti in questa stagione';
+
+  var track = $('season-track');
+  track.innerHTML = '';
+  for (var i = 1; i <= SEASON_TIERS.length; i++) {
+    var reached = p.tier >= i;
+    var owned = bestEver >= i;
+    var rewards = rewardsForTier(s.key, i);
+    var li = document.createElement('li');
+    li.className = 'tier' + (reached ? ' reached' : (owned ? ' owned' : ''));
+    li.innerHTML = '<span class="tier-num">' + i + '</span>'
+      + '<span class="tier-body"><b>' + SEASON_TIERS[i - 1] + ' punti</b><i>'
+      + (rewards.length
+          ? rewards.map(function (r) { return r.kind + ': ' + r.name; }).join('  \u00b7  ')
+          : 'Nessun premio')
+      + '</i></span>'
+      + '<span class="tier-mark">' + (owned ? '\u2713' : '') + '</span>';
+    track.appendChild(li);
+  }
+}
+
+/* ------------------------------------------------------------- collection */
+
+function equipItem(kind, id) {
+  if (kind === 'theme') { Store.set('theme', id); applyTheme(id); }
+  else if (kind === 'title') Store.set('title', id);
+  else if (kind === 'avatar') Store.set('avatar', id);
+}
+
+function renderCollection() {
+  var ctx = unlockContext();
+  var eq = equipped();
+  var got = 0, total = 0;
+
+  function build(el, items, kind, render) {
+    el.innerHTML = '';
+    items.forEach(function (it) {
+      total++;
+      var ok = isUnlocked(it, ctx);
+      if (ok) got++;
+      var current = (kind === 'theme' ? eq.theme : kind === 'title' ? eq.title : eq.avatar);
+      var li = document.createElement('li');
+      li.className = 'coll-item' + (ok ? '' : ' locked') + (current === it.id ? ' on' : '');
+      li.innerHTML = render(it, ok);
+      if (ok) {
+        li.addEventListener('click', function () {
+          equipItem(kind, it.id);
+          renderCollection();
+        });
+      }
+      el.appendChild(li);
+    });
+  }
+
+  build($('coll-themes'), THEMES, 'theme', function (t, ok) {
+    return '<span class="swatch" data-swatch="' + t.id + '"></span>'
+      + '<span class="tbody"><b>' + t.name + '</b><i>'
+      + (ok ? 'Tocca per usarlo' : howToGet(t)) + '</i></span>';
+  });
+
+  build($('coll-titles'), TITLES, 'title', function (t, ok) {
+    return '<span class="tbody"><b>' + t.text + '</b><i>'
+      + (ok ? 'Tocca per usarlo' : howToGet(t)) + '</i></span>';
+  });
+
+  build($('coll-avatars'), AVATARS, 'avatar', function (a, ok) {
+    return '<span class="glyph-big">' + a.glyph + '</span>'
+      + '<span class="tbody"><i>' + (ok ? 'Tocca' : howToGet(a)) + '</i></span>';
+  });
+
+  $('coll-count').textContent = got + ' di ' + total + ' sbloccati';
 }
 
 function applyTextSize(n) {
@@ -897,6 +1129,12 @@ function renderDiary() {
   $('d-best').textContent = s.bestWord
     ? s.bestWord.word.toUpperCase() + ' - ' + s.bestWord.score
     : '-';
+
+  var eq = equipped();
+  $('diary-avatar').textContent = avatarGlyph(eq.avatar);
+  var dt = titleText(eq.title);
+  $('diary-title').textContent = dt;
+  $('diary-title').hidden = !dt;
 
   var have = loadTrophies();
   var list = $('trophy-list');
@@ -1036,6 +1274,8 @@ function wireUi() {
   el.levelBar = $('level-bar');
   el.btnDone = $('btn-done');
   el.levelUp = $('level-up');
+  el.tierUp = $('tier-up');
+  el.newUnlocks = $('new-unlocks');
   el.newTrophies = $('new-trophies');
   el.durationBtns = document.querySelectorAll('.dur');
 
@@ -1111,10 +1351,31 @@ function wireUi() {
     sound.textContent = Sound.on ? '♪ Suoni: sì' : '♪ Suoni: no';
   });
 
-  $('howto-toggle').addEventListener('click', function () {
-    var box = $('howto-body');
-    box.hidden = !box.hidden;
+  $('btn-season').addEventListener('click', function () {
+    renderSeason();
+    show('season');
   });
+  $('btn-season-back').addEventListener('click', function () {
+    refreshHome();
+    show('home');
+  });
+  $('btn-collection').addEventListener('click', function () {
+    renderCollection();
+    show('collection');
+  });
+  $('btn-collection-back').addEventListener('click', function () {
+    refreshHome();
+    show('home');
+  });
+  $('btn-intro-again').addEventListener('click', function () {
+    startIntro(INTRO_SLIDES);
+  });
+  $('btn-intro-next').addEventListener('click', function () {
+    introIndex++;
+    if (introIndex >= introQueue.length) finishIntro();
+    else renderIntro();
+  });
+  $('btn-intro-skip').addEventListener('click', finishIntro);
 
   wireBackup();
   wireBoard();
@@ -1124,6 +1385,7 @@ function wireUi() {
 function boot() {
   wireUi();
   requestPersistence();
+  maybeIntro();
   fetch('dict.bin')
     .then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);

@@ -10,7 +10,9 @@ The repo root **is** the site — that's what lets GitHub Pages serve it with a
 single dropdown, no build step and no path juggling.
 
 ```
-index.html  style.css  game.js  dawg.js  progress.js  dict.bin
+index.html  style.css  game.js  dawg.js  dict.bin
+progress.js    levels, trophies, the day diary
+collection.js  themes, titles, avatars, the seasonal track
 manifest.webmanifest  sw.js
 icons/      the PWA icons, L monogram drawn procedurally
 build/      how dict.bin and the icons were made; not needed to run the game
@@ -105,15 +107,16 @@ counts total days played instead. A streak is the most motivating mechanic
 available and also the most anxiety-producing, and the whole appeal of this app
 is that it asks nothing of her.
 
-**Livelli** run from *Curiosa* to *Regina delle parole* on cumulative points
-across every game ever played. The ladder is long on purpose: level 2 after a
-couple of games, level 10 after roughly 460 rounds. Someone already deep in it
-should still have most of the climb ahead.
+**Livelli** run from *Curiosa* to *Regina delle parole* across **30 named
+levels** on cumulative points. The ladder is long on purpose: level 2 after a
+couple of games, level 10 after a few weeks, level 30 after well over a year of
+steady play. She plays a lot, so the ceiling should stay out of reach.
 
 Levels arrived after she had been playing for weeks, so `loadStats()` performs
 a **one-time migration**: if no `points` key exists, it estimates her past
 points from the words she has already found (they average about 30 each). That
-puts a long-standing player around level 5 rather than resetting her to zero.
+puts a long-standing player around level 9 of 30 rather than resetting her
+to zero.
 
 **Trofei** are 13 one-time, permanent awards — a first word, an 8- and a
 10-letter word, 20 and 30 words in a round, three score thresholds, beating her
@@ -126,6 +129,49 @@ the results screen. It holds the level bar, lifetime totals, the trophy case,
 and a month calendar: days she played are shaded, days she played the daily
 challenge show the score, and the months page backwards but not into the
 future. Weeks start on Monday.
+
+## La stagione
+
+`collection.js` holds a seasonal track: four seasons a year on the Italian
+meteorological calendar (primavera is March to May, and inverno straddles the
+new year), each with **8 traguardi** paying out themes, titles and avatar
+symbols.
+
+The one departure from how a season pass normally works: **seasons rotate
+rather than expire.** Estate 2027 offers exactly what Estate 2026 offered, and
+`bestTierForKey()` reads the highest tier she has ever reached in that season
+across every year, so a later run can only push it higher. Anything she misses
+comes back around.
+
+That was a deliberate call. A pass earns its engagement from manufactured
+obligation — a deadline, a track you are behind on, rewards you lose by not
+showing up. This one keeps the track, the tiers and the things to work towards
+and drops the moment where the game tells her she lost something by living her
+life. The tiers are also generous: finishing one takes three or four weeks of
+ordinary play out of a season that lasts three months.
+
+## La collezione
+
+14 themes, 22 titles and 17 avatar symbols, unlocked by level, by trophy, or
+from the seasonal track, and equipped by tapping. Locked ones stay visible with
+the requirement written underneath.
+
+Themes work by redefining the same CSS custom properties on
+`:root[data-theme="..."]`, so the entire interface follows without any component
+knowing a theme exists. **Every theme was checked pair-by-pair against WCAG AA**
+— text, muted text, accents, button ink, tile letters and both bonus colours —
+and the worst pair across all fourteen sits at 5.19:1. If you add one, run that
+check again; the two bonus colours on the tile are what fails first, because the
+tile is light in every theme while the bonus text is dark.
+
+## First run and updates
+
+`INTRO_SLIDES` in `game.js` is a five-card tutorial shown the first time the app
+is ever opened; `NEWS_SLIDES` is a what's-new deck shown once to someone who
+already had an older version. Which one appears is decided by `maybeIntro()`
+from `seenVersion` against `APP_VERSION` — **bump `APP_VERSION` and rewrite
+`NEWS_SLIDES` when you ship something worth announcing.** The tutorial is always
+reachable again from *Come si gioca* on the home screen.
 
 ## Accessibility
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it">
+<html lang="it" data-theme="bosco">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -16,21 +16,55 @@
 </head>
 <body class="ts-1">
 
+<!-- ------------------------------------------------------ intro / novita -->
+<section id="screen-intro" class="screen">
+  <div class="wrap intro-wrap">
+    <div class="intro-card">
+      <span id="intro-glyph" class="intro-glyph">&#10048;</span>
+      <h2 id="intro-title">Benvenuta</h2>
+      <div id="intro-body" class="intro-body"></div>
+      <div id="intro-dots" class="dots"></div>
+      <button id="btn-intro-next" class="primary">Avanti</button>
+      <button id="btn-intro-skip" class="ghost small">Salta</button>
+    </div>
+  </div>
+</section>
+
 <!-- ------------------------------------------------------------- home -->
 <section id="screen-home" class="screen active">
   <div class="wrap">
-    <p id="greeting" class="greeting">Ciao</p>
-    <h1 class="logo">Parolinda</h1>
+
+    <header class="hero">
+      <p id="greeting" class="greeting">Ciao</p>
+      <h1 class="logo">Parolinda</h1>
+      <div class="identity">
+        <span id="home-avatar" class="avatar">&#10048;</span>
+        <span id="home-title" class="player-title"></span>
+      </div>
+    </header>
 
     <!-- Level strip doubles as the way into the diary. -->
-    <button id="btn-diary" class="level-strip">
-      <span id="level-name" class="level-name">Livello 1</span>
+    <button id="btn-diary" class="panel level-strip">
+      <span class="row-between">
+        <span id="level-name" class="level-name">Livello 1</span>
+        <span class="chev">Diario &rsaquo;</span>
+      </span>
       <span class="bar"><span id="level-bar" class="bar-fill"></span></span>
-      <span class="hint">Il mio diario &rsaquo;</span>
+      <span id="level-next" class="hint"></span>
     </button>
 
-    <!-- The daily board: same letters all day, retry as often as you like.
-         This is what stands in for having an opponent. -->
+    <!-- Seasonal track. Rotates rather than expires: see collection.js -->
+    <button id="btn-season" class="panel season-strip">
+      <span class="row-between">
+        <span class="season-name"><span id="season-glyph" class="sglyph">&#9728;</span>
+          <span id="season-name">Stagione</span></span>
+        <span class="chev">Stagione &rsaquo;</span>
+      </span>
+      <span class="bar"><span id="season-bar" class="bar-fill"></span></span>
+      <span id="season-next" class="hint"></span>
+    </button>
+
+    <!-- The daily board: same letters all day, retry as often as you like. -->
     <div class="card daily">
       <span class="label">Sfida del giorno &middot; <span id="daily-date"></span></span>
       <span id="daily-score" class="daily-score">Non ancora giocata</span>
@@ -64,6 +98,11 @@
       <div><span class="label">Parola migliore</span><b id="stat-best">&mdash;</b></div>
     </div>
 
+    <div class="two-up">
+      <button id="btn-collection" class="ghost wide">La mia collezione</button>
+      <button id="btn-intro-again" class="ghost wide">Come si gioca</button>
+    </div>
+
     <div class="card settings">
       <button id="btn-sound" class="ghost wide">&#9834; Suoni: s&igrave;</button>
       <div class="ts-row">
@@ -76,19 +115,7 @@
       </div>
     </div>
 
-    <button id="howto-toggle" class="ghost">Come si gioca</button>
-    <div id="howto-body" class="howto" hidden>
-      <p>Collega le lettere <b>vicine</b> &mdash; anche in diagonale &mdash; per formare
-         una parola di almeno <b>3 lettere</b>.</p>
-      <p><b>Trascina</b> il dito sulle lettere, oppure <b>tocca</b> una lettera
-         alla volta e poi premi <b>&#10003;</b>.</p>
-      <p>Le caselle colorate valgono di pi&ugrave;: <b>L&times;2</b> moltiplica la lettera,
-         <b>P&times;3</b> moltiplica tutta la parola.</p>
-      <p>Le parole lunghe danno punti extra: 5 lettere +5, 6 lettere +10,
-         7 lettere +15, 8 o pi&ugrave; +20.</p>
-      <p>Gli accenti non servono: <i>citt&agrave;</i> si scrive <b>CITTA</b>.</p>
-      <p id="dedica" class="dedica"></p>
-    </div>
+    <p id="dedica" class="dedica"></p>
 
     <button id="backup-toggle" class="ghost">Backup dei progressi</button>
     <div id="backup-body" class="howto" hidden>
@@ -150,7 +177,8 @@
 <section id="screen-over" class="screen">
   <div class="wrap">
     <h2 id="praise">Fine partita</h2>
-    <p id="level-up" class="level-up" hidden></p>
+    <p id="level-up" class="banner" hidden></p>
+    <p id="tier-up" class="banner" hidden></p>
 
     <div class="card">
       <span class="big huge" id="final-score">0</span>
@@ -159,6 +187,7 @@
     </div>
 
     <ul id="new-trophies" class="trophies" hidden></ul>
+    <ul id="new-unlocks" class="trophies" hidden></ul>
 
     <div class="actions">
       <button id="btn-again" class="primary">Gioca ancora</button>
@@ -181,6 +210,10 @@
     <h2>Il mio diario</h2>
 
     <div class="card">
+      <span class="identity">
+        <span id="diary-avatar" class="avatar">&#10048;</span>
+        <span id="diary-title" class="player-title"></span>
+      </span>
       <span class="big" id="diary-level">Livello 1</span>
       <span class="bar wide"><span id="diary-bar" class="bar-fill"></span></span>
       <span class="label" id="diary-next"></span>
@@ -219,8 +252,49 @@
   </div>
 </section>
 
+<!-- ----------------------------------------------------------- season -->
+<section id="screen-season" class="screen">
+  <div class="wrap">
+    <h2 id="season-heading">Stagione</h2>
+
+    <div class="card season-head">
+      <span id="season-big-glyph" class="season-big-glyph">&#9728;</span>
+      <span class="big" id="season-tier-big">Traguardo 0 di 8</span>
+      <span class="bar wide"><span id="season-bar2" class="bar-fill"></span></span>
+      <span class="label" id="season-note"></span>
+    </div>
+
+    <ul id="season-track" class="track"></ul>
+
+    <p class="hint boxed">Le stagioni tornano ogni anno. Quello che non riesci a
+      prendere adesso, potrai prenderlo la prossima volta: non si perde niente.</p>
+
+    <button id="btn-season-back" class="primary">Torna al menu</button>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------- collection -->
+<section id="screen-collection" class="screen">
+  <div class="wrap">
+    <h2>La mia collezione</h2>
+    <p id="coll-count" class="label"></p>
+
+    <h3>Temi</h3>
+    <ul id="coll-themes" class="collection"></ul>
+
+    <h3>Titoli</h3>
+    <ul id="coll-titles" class="collection"></ul>
+
+    <h3>Simboli</h3>
+    <ul id="coll-avatars" class="collection avatars"></ul>
+
+    <button id="btn-collection-back" class="primary">Torna al menu</button>
+  </div>
+</section>
+
 <script src="dawg.js"></script>
 <script src="progress.js"></script>
+<script src="collection.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

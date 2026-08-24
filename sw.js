@@ -6,7 +6,7 @@
  * keeps being served.
  */
 
-var CACHE = 'parolinda-v5';
+var CACHE = 'parolinda-v6';
 
 var ASSETS = [
   './',
@@ -14,6 +14,7 @@ var ASSETS = [
   'style.css',
   'dawg.js',
   'progress.js',
+  'collection.js',
   'game.js',
   'dict.bin',
   'manifest.webmanifest',
