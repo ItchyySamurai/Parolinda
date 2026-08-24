@@ -126,7 +126,75 @@ var TROPHIES = [
 
   { id: 'mille',       icon: '❖', name: 'Mille parole',
     desc: 'Trova 1000 parole in tutto',
-    test: function (c) { return c.totalWords >= 1000; } }
+    test: function (c) { return c.totalWords >= 1000; } },
+
+  { id: 'diecimila',   icon: '❖', name: 'Diecimila parole',
+    desc: 'Trova 10.000 parole in tutto',
+    test: function (c) { return c.totalWords >= 10000; } },
+
+  { id: 'serie5',      icon: '⁙', name: 'Cinque di fila',
+    desc: 'Trova 5 parole di fila senza sbagliare',
+    test: function (c) { return c.streak >= 5; } },
+
+  { id: 'serie10',     icon: '⁘', name: 'Dieci di fila',
+    desc: 'Trova 10 parole di fila senza sbagliare',
+    test: function (c) { return c.streak >= 10; } },
+
+  { id: 'parolissima', icon: '❋', name: 'Parolissima',
+    desc: 'Trova una parola di 12 lettere',
+    test: function (c) { return c.longest >= 12; } },
+
+  { id: 'cento-parola', icon: '✵', name: 'Colpo grosso',
+    desc: 'Fai 100 punti con una parola sola',
+    test: function (c) { return c.bestWordScore >= 100; } },
+
+  { id: 'migliore',    icon: '✦', name: 'La migliore',
+    desc: 'Trova la parola che vale di più sul tabellone',
+    test: function (c) { return c.foundTop; } },
+
+  { id: 'livello10',   icon: '☆', name: 'Livello 10',
+    desc: 'Arriva al livello 10',
+    test: function (c) { return c.level >= 10; } },
+
+  { id: 'livello20',   icon: '★', name: 'Livello 20',
+    desc: 'Arriva al livello 20',
+    test: function (c) { return c.level >= 20; } },
+
+  { id: 'livello30',   icon: '♛', name: 'Livello 30',
+    desc: 'Arriva al livello 30',
+    test: function (c) { return c.level >= 30; } },
+
+  { id: 'cento-partite', icon: '◉', name: 'Cento partite',
+    desc: 'Gioca 100 partite',
+    test: function (c) { return c.games >= 100; } },
+
+  { id: 'mille-partite', icon: '◎', name: 'Mille partite',
+    desc: 'Gioca 1000 partite',
+    test: function (c) { return c.games >= 1000; } },
+
+  { id: 'percorso',    icon: '✿', name: 'Primo percorso',
+    desc: 'Completa un percorso',
+    test: function (c) { return c.passesDone >= 1; } },
+
+  { id: 'tre-percorsi', icon: '❁', name: 'Tre percorsi',
+    desc: 'Completa tre percorsi',
+    test: function (c) { return c.passesDone >= 3; } },
+
+  { id: 'sfida10',     icon: '◆', name: 'Dieci sfide',
+    desc: 'Gioca la sfida del giorno in 10 giorni diversi',
+    test: function (c) { return c.dailyDays >= 10; } },
+
+  { id: 'alba',        icon: '☀', name: 'Di buon mattino',
+    desc: 'Gioca una partita prima delle 7',
+    test: function (c) { return c.hour < 7; } },
+
+  { id: 'notturna',    icon: '☾', name: 'Nottambula',
+    desc: 'Gioca una partita dopo mezzanotte',
+    test: function (c) { return c.hour >= 0 && c.hour < 4; } },
+
+  { id: 'tuttimodi',   icon: '❈', name: 'Di tutto un po’',
+    desc: 'Prova tutti e cinque i modi di giocare',
+    test: function (c) { return c.modesPlayed >= 5; } }
 ];
 
 function loadTrophies() { return Store.get('trophies', {}); }
@@ -152,6 +220,24 @@ function awardTrophies(ctx) {
 /* ------------------------------------------------------------- day diary */
 
 function loadPlayedDates() { return Store.get('playedDates', {}); }
+
+function recordMode(mode) {
+  var m = Store.get('modesPlayed', {});
+  if (!m[mode]) {
+    m[mode] = true;
+    Store.set('modesPlayed', m);
+  }
+  return Object.keys(m).length;
+}
+
+function daysWithDaily() {
+  var n = 0, pre = 'parolinda.daily.';
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.indexOf(pre) === 0) n++;
+  }
+  return n;
+}
 
 function recordDay(dateKey) {
   var d = loadPlayedDates();

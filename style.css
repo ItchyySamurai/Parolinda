@@ -967,3 +967,123 @@ h3 { font-size: calc(17px * var(--ts)); }
   color: var(--accent);
   font-size: calc(21px * var(--ts));
 }
+
+/* ==================================================================
+   Effects, tile styles, streak badge, volume picker.
+   ================================================================== */
+
+.board-holder { overflow: visible; }
+
+/* The score of a word, rising away from where it ended. */
+.fx-float {
+  position: absolute;
+  transform: translate(-50%, 0);
+  font-weight: 800;
+  font-size: calc(26px * var(--ts));
+  color: var(--accent);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .45);
+  pointer-events: none;
+  animation: floatUp .85s ease-out forwards;
+  z-index: 4;
+}
+@keyframes floatUp {
+  0%   { opacity: 0; transform: translate(-50%, 6px) scale(.85); }
+  18%  { opacity: 1; transform: translate(-50%, -6px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -70px) scale(1); }
+}
+
+.confetto {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 5;
+  animation: burst var(--dur, 1s) cubic-bezier(.15, .7, .35, 1) forwards;
+}
+@keyframes burst {
+  0%   { opacity: 1; transform: translate(-50%, -50%) rotate(0) scale(1); }
+  100% { opacity: 0;
+         transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 90px))
+                    rotate(var(--rot)) scale(.5); }
+}
+
+.fx-flare { animation: flare .7s ease-out; }
+@keyframes flare {
+  0%   { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, .10); }
+  30%  { box-shadow: inset 0 0 90px 0 rgba(255, 255, 255, .10); }
+  100% { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+.tile.fx-in { animation: tileIn .34s cubic-bezier(.2, .9, .3, 1.2) backwards; }
+@keyframes tileIn {
+  0%   { opacity: 0; transform: translateY(-14px) scale(.82); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* -------------------------------------------------------------- tag row */
+
+.tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 20px;
+}
+.streak {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 99px;
+  padding: 2px 12px;
+  font-size: calc(13px * var(--ts));
+  font-weight: 800;
+  letter-spacing: .5px;
+  animation: pop .25s ease-out;
+}
+@keyframes pop {
+  0% { transform: scale(.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ------------------------------------------------------------ tile styles */
+
+:root[data-tiles="morbido"] .tile { border-radius: 30%; }
+:root[data-tiles="netto"]   .tile { border-radius: 3px; }
+:root[data-tiles="tondo"]   .tile { border-radius: 50%; }
+:root[data-tiles="cornice"] .tile {
+  border-radius: 10%;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, .3), inset 0 0 0 3px var(--accent-deep);
+}
+
+.tile-demo {
+  flex: none;
+  width: 2.1em;
+  height: 2.1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tile);
+  color: var(--tile-ink);
+  font-weight: 800;
+  border-radius: 14%;
+}
+.tile-demo[data-demo="morbido"] { border-radius: 30%; }
+.tile-demo[data-demo="netto"]   { border-radius: 3px; }
+.tile-demo[data-demo="tondo"]   { border-radius: 50%; }
+.tile-demo[data-demo="cornice"] { border-radius: 10%; box-shadow: inset 0 0 0 2px var(--accent-deep); }
+
+/* ---------------------------------------------------------------- volume */
+
+.vol-btn {
+  background: var(--bg);
+  color: var(--muted);
+  border: 2px solid transparent;
+  padding: 8px 12px;
+  font-size: calc(14px * var(--ts));
+}
+.vol-btn.on { color: var(--accent); border-color: var(--accent); }
+
+.card.modes .ghost { margin-top: 2px; }
+.card.modes .hint { margin-bottom: 4px; }

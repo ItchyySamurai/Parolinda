@@ -84,10 +84,19 @@
       <button id="btn-play" class="ghost wide" disabled>Partita libera</button>
     </div>
 
-    <div class="card">
-      <span class="label">Senza fretta</span>
-      <button id="btn-zen" class="ghost wide" disabled>Gioca senza tempo</button>
+    <div class="card modes">
+      <span class="label">Altri modi di giocare</span>
+
+      <button id="btn-zen" class="ghost wide" disabled>Senza fretta</button>
       <span class="hint">Nessun orologio. Giochi con calma e finisci quando vuoi.</span>
+
+      <button id="btn-long" class="ghost wide" disabled>Parole lunghe</button>
+      <span class="hint">Contano solo le parole da <b>5 lettere</b> in su,
+        ma i punti extra valgono il doppio.</span>
+
+      <button id="btn-endless" class="ghost wide" disabled>Infinito</button>
+      <span class="hint">Parti da un minuto. Ogni parola ti regala secondi, e
+        ogni dieci parole arriva un tabellone nuovo.</span>
     </div>
 
     <p id="loading" class="loading">Carico il dizionario&hellip;</p>
@@ -104,7 +113,15 @@
     </div>
 
     <div class="card settings">
-      <button id="btn-sound" class="ghost wide">&#9834; Suoni: s&igrave;</button>
+      <div class="ts-row">
+        <span class="label">Volume dei suoni</span>
+        <div class="seg">
+          <button class="vol-btn" data-vol="0">&#10005;</button>
+          <button class="vol-btn" data-vol="1">Basso</button>
+          <button class="vol-btn" data-vol="2">Medio</button>
+          <button class="vol-btn" data-vol="3">Alto</button>
+        </div>
+      </div>
       <div class="ts-row">
         <span class="label">Dimensione del testo</span>
         <div class="seg">
@@ -148,7 +165,10 @@
     <button id="btn-pause" class="ghost small">Pausa</button>
   </header>
 
-  <div id="mode-tag" class="mode-tag" hidden></div>
+  <div class="tag-row">
+    <span id="mode-tag" class="mode-tag" hidden></span>
+    <span id="streak" class="streak" hidden></span>
+  </div>
   <div id="current" class="current"></div>
 
   <div class="board-holder">
@@ -292,11 +312,19 @@
     <h3>Simboli</h3>
     <ul id="coll-avatars" class="collection avatars"></ul>
 
+    <h3>Stile delle tessere</h3>
+    <ul id="coll-tiles" class="collection"></ul>
+
+    <h3>Suoni</h3>
+    <ul id="coll-sounds" class="collection"></ul>
+
     <button id="btn-collection-back" class="primary">Torna al menu</button>
   </div>
 </section>
 
 <script src="dawg.js"></script>
+<script src="audio.js"></script>
+<script src="effects.js"></script>
 <script src="progress.js"></script>
 <script src="collection.js"></script>
 <script src="game.js"></script>

@@ -6,13 +6,15 @@
  * keeps being served.
  */
 
-var CACHE = 'parolinda-v7';
+var CACHE = 'parolinda-v8';
 
 var ASSETS = [
   './',
   'index.html',
   'style.css',
   'dawg.js',
+  'audio.js',
+  'effects.js',
   'progress.js',
   'collection.js',
   'game.js',

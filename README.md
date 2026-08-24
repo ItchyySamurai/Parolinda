@@ -11,8 +11,10 @@ single dropdown, no build step and no path juggling.
 
 ```
 index.html  style.css  game.js  dawg.js  dict.bin
+audio.js       synthesised sound, in four unlockable packs
+effects.js     confetti, floating scores, count-ups
 progress.js    levels, trophies, the day diary
-collection.js  themes, titles, avatars, the pass track
+collection.js  themes, titles, avatars, tile styles, the pass track
 manifest.webmanifest  sw.js
 icons/      the PWA icons, L monogram drawn procedurally
 build/      how dict.bin and the icons were made; not needed to run the game
@@ -98,6 +100,19 @@ time there is nothing to compare, but the words, points and trophies all count
 normally. The score trophies are excluded there for the same reason — see
 `timed` in `progress.js`.
 
+**Parole lunghe** — only words of **5 letters or more** count, and the length
+bonus is doubled to pay for it. Boards are generated and validated against that
+same minimum, so the solver never offers her words the mode would reject.
+
+**Infinito** — starts with one minute. Every word buys back `2 + len/2` seconds,
+and every ten words the board is replaced under her without ending the round.
+Its record is a single number rather than one per duration.
+
+Everything that differs between modes lives in the `MODES` table at the top of
+`game.js` — `timed`, `minLen`, `bonusMult`, `addTime`, `refreshAt` and the board
+quality thresholds. Adding a sixth mode should mean adding a row, not threading
+another name through a dozen conditionals.
+
 ## Livelli, trofei e diario
 
 All of this lives in `progress.js`, and it is built on one rule: **everything
@@ -118,11 +133,15 @@ beginning rather than dropping someone into the middle of a ladder they never
 saw. Games, words and best word carry over untouched; only the points counter
 starts fresh.
 
-**Trofei** are 13 one-time, permanent awards — a first word, an 8- and a
-10-letter word, 20 and 30 words in a round, three score thresholds, beating her
-own daily result, finishing a Senza fretta round, playing on 7 and on 30
-different days, and 1000 words in total. Locked ones stay visible at low
-opacity so they read as goals.
+**Trofei** are **30** one-time, permanent awards: word lengths up to 12 letters,
+word counts, score thresholds, streaks of 5 and 10 without a mistake, finding
+the single best word a board had, level and lifetime-games milestones, finishing
+passes, playing before 7am or after midnight, and trying all five modes. Locked
+ones stay visible at low opacity so they read as goals.
+
+Two are deliberately mode-gated: *Con calma* only comes from Senza fretta, and
+*Sfida migliorata* only from the daily. The three score trophies are blocked in
+Senza fretta, where unlimited time would hand them over on day one.
 
 **Il mio diario** is reached from the level strip on the home screen or from
 the results screen. It holds the level bar, lifetime totals, the trophy case,
@@ -152,9 +171,13 @@ the same reason.
 
 ## La collezione
 
-14 themes, 34 titles and 33 avatar symbols — 81 things to collect — unlocked
-by level, by trophy, or from the pass track, and equipped by tapping. Locked
-ones stay visible with the requirement written underneath.
+**99 things to collect** across five kinds: 14 themes, 39 titles, 37 avatar
+symbols, 5 tile styles and 4 sound packs. Unlocked by level, by trophy, or from
+the pass track, and equipped by tapping — a sound pack plays itself when picked.
+Locked ones stay visible with the requirement written underneath.
+
+Ids are only unique within a kind (both tile styles and sound packs ship a
+`classico`), so `collKey()` prefixes them before anything counts or diffs them.
 
 Themes work by redefining the same CSS custom properties on
 `:root[data-theme="..."]`, so the entire interface follows without any component
@@ -172,6 +195,22 @@ already had an older version. Which one appears is decided by `maybeIntro()`
 from `seenVersion` against `APP_VERSION` — **bump `APP_VERSION` and rewrite
 `NEWS_SLIDES` when you ship something worth announcing.** The tutorial is always
 reachable again from *Come si gioca* on the home screen.
+
+## Sound and effects
+
+There is still **no audio file anywhere in this project** — every sound is
+oscillators built at the moment it plays. `audio.js` holds four packs, each one
+a waveform, a decay and the intervals of the chord a found word plays. A run of
+correct words climbs a semitone at a time, which is most of why a good streak
+feels good. Volume is a four-step control rather than a switch, because someone
+playing in a quiet room in the evening wants quiet rather than nothing.
+
+`effects.js` is DOM only — no canvas, no library. Confetti is a handful of spans
+with `--dx` / `--dy` / `--rot` custom properties driving one keyframe, cleaned up
+on `animationend`. Scores float up from where the word ended, the HUD counts up
+rather than snapping, and tiles stagger in when a board is built. **Every effect
+checks `prefers-reduced-motion` and quietly does nothing** if the system asks
+for less movement.
 
 ## Accessibility
 

@@ -158,7 +158,12 @@ var TITLES = [
   { id: 't-leggenda', text: 'Leggenda vivente',        unlock: { type: 'level', n: 27 } },
   { id: 't-calma',    text: 'Anima calma',             unlock: { type: 'trophy', id: 'calma' } },
   { id: 't-paziente', text: 'Cuore paziente',          unlock: { type: 'trophy', id: 'mese' } },
-  { id: 't-mille',    text: 'Collezionista di parole', unlock: { type: 'trophy', id: 'mille' } }
+  { id: 't-mille',    text: 'Collezionista di parole', unlock: { type: 'trophy', id: 'mille' } },
+  { id: 't-serie',    text: 'Serie perfetta',      unlock: { type: 'trophy', id: 'serie10' } },
+  { id: 't-aquila',   text: 'Occhio d’aquila',unlock: { type: 'trophy', id: 'migliore' } },
+  { id: 't-instanc',  text: 'Instancabile',        unlock: { type: 'trophy', id: 'cento-partite' } },
+  { id: 't-viagg',    text: 'Viaggiatrice',        unlock: { type: 'trophy', id: 'tre-percorsi' } },
+  { id: 't-alba',     text: 'Sveglia all’alba', unlock: { type: 'trophy', id: 'alba' } }
 ];
 
 /* Two per pass, at tiers 1 and 3. */
@@ -195,7 +200,11 @@ var AVATARS = [
   { id: 'a-quadri', glyph: '❖', unlock: { type: 'level', n: 22 } },
   { id: 'a-corona', glyph: '♛', unlock: { type: 'level', n: 30 } },
   { id: 'a-nota',   glyph: '♪', unlock: { type: 'trophy', id: 'venti' } },
-  { id: 'a-cuore',  glyph: '❤', unlock: { type: 'trophy', id: 'settimana' } }
+  { id: 'a-cuore',  glyph: '❤', unlock: { type: 'trophy', id: 'settimana' } },
+  { id: 'a-sole2',  glyph: '✸', unlock: { type: 'trophy', id: 'cento-parola' } },
+  { id: 'a-fiore2', glyph: '✥', unlock: { type: 'trophy', id: 'cento-partite' } },
+  { id: 'a-croce',  glyph: '✤', unlock: { type: 'trophy', id: 'serie10' } },
+  { id: 'a-stella2', glyph: '✜', unlock: { type: 'trophy', id: 'tuttimodi' } }
 ];
 
 /* Two per pass, at tiers 2 and 4. */
@@ -212,6 +221,18 @@ PASSES.forEach(function (p, i) {
   AVATARS.push({ id: 'ap' + i + 'b', glyph: PASS_AVATARS[i][1],
                  unlock: { type: 'pass', pass: p.id, tier: 4 } });
 });
+
+/*
+ * Tile styles. Purely how the board looks: a border radius, a shadow and in
+ * one case an inset frame. Cheap to add, and a visible change every time.
+ */
+var TILE_STYLES = [
+  { id: 'classico', name: 'Classico', unlock: { type: 'free' } },
+  { id: 'morbido',  name: 'Morbido',  unlock: { type: 'level', n: 5 } },
+  { id: 'netto',    name: 'Netto',    unlock: { type: 'level', n: 13 } },
+  { id: 'tondo',    name: 'Tondo',    unlock: { type: 'level', n: 19 } },
+  { id: 'cornice',  name: 'Cornice',  unlock: { type: 'trophy', id: 'migliore' } }
+];
 
 /* Everything a given tier of a given pass hands over. */
 function rewardsForTier(passId, tier) {
@@ -267,24 +288,38 @@ function howToGet(item) {
 function unlockSnapshot() {
   var ctx = unlockContext();
   var got = {};
-  THEMES.concat(TITLES, AVATARS).forEach(function (it) {
-    if (isUnlocked(it, ctx)) got[it.id] = true;
+  allCollectibles().forEach(function (it) {
+    // Ids are unique within a kind but not across them, so key by both.
+    if (isUnlocked(it, ctx)) got[collKey(it)] = true;
   });
   return got;
+}
+
+/* Tile styles and sound packs both ship a 'classico', hence the prefix. */
+function collKey(it) {
+  if (it.glyph !== undefined) return 'a:' + it.id;
+  if (it.text !== undefined) return 't:' + it.id;
+  if (it.wave !== undefined) return 's:' + it.id;
+  if (TILE_STYLES.indexOf(it) !== -1) return 'k:' + it.id;
+  return 'h:' + it.id;
 }
 
 function newlyUnlocked(before) {
   var after = unlockSnapshot();
   var fresh = [];
-  THEMES.forEach(function (t) {
-    if (after[t.id] && !before[t.id]) fresh.push({ kind: 'Tema', label: t.name, glyph: '◐' });
-  });
-  TITLES.forEach(function (t) {
-    if (after[t.id] && !before[t.id]) fresh.push({ kind: 'Titolo', label: t.text, glyph: '✧' });
-  });
-  AVATARS.forEach(function (a) {
-    if (after[a.id] && !before[a.id]) fresh.push({ kind: 'Simbolo', label: a.glyph, glyph: a.glyph });
-  });
+  function sweep(list, kind, label, glyph) {
+    list.forEach(function (it) {
+      var k = collKey(it);
+      if (after[k] && !before[k]) {
+        fresh.push({ kind: kind, label: label(it), glyph: glyph(it) });
+      }
+    });
+  }
+  sweep(THEMES, 'Tema', function (t) { return t.name; }, function () { return '◐'; });
+  sweep(TITLES, 'Titolo', function (t) { return t.text; }, function () { return '✧'; });
+  sweep(AVATARS, 'Simbolo', function (a) { return a.glyph; }, function (a) { return a.glyph; });
+  sweep(TILE_STYLES, 'Stile', function (t) { return t.name; }, function () { return '◧'; });
+  sweep(SOUND_PACKS, 'Suoni', function (p) { return p.name; }, function () { return '♪'; });
   return fresh;
 }
 
@@ -294,8 +329,27 @@ function equipped() {
   return {
     theme: Store.get('theme', 'bosco'),
     title: Store.get('title', 't-nessuno'),
-    avatar: Store.get('avatar', 'a-fiore')
+    avatar: Store.get('avatar', 'a-fiore'),
+    tiles: Store.get('tiles', 'classico'),
+    sound: Store.get('sound-pack', 'classico')
   };
+}
+
+function applyTileStyle(id) {
+  var ok = false;
+  for (var i = 0; i < TILE_STYLES.length; i++) if (TILE_STYLES[i].id === id) ok = true;
+  document.documentElement.setAttribute('data-tiles', ok ? id : 'classico');
+}
+
+function applySoundPack(id) {
+  var ok = false;
+  for (var i = 0; i < SOUND_PACKS.length; i++) if (SOUND_PACKS[i].id === id) ok = true;
+  Sound.packId = ok ? id : 'classico';
+}
+
+/* Everything wearable, in one list, for counting and for the unlock sweep. */
+function allCollectibles() {
+  return THEMES.concat(TITLES, AVATARS, TILE_STYLES, SOUND_PACKS);
 }
 
 function titleText(id) {

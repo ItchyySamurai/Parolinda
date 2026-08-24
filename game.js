@@ -46,6 +46,33 @@ function pickGreeting() {
 
 var MIN_WORD_LEN = 3;
 
+/*
+ * Everything that differs between ways of playing, in one table, so the rest
+ * of the code asks the mode rather than branching on its name.
+ *
+ *   timed      does the clock run down (and can it hold a record)
+ *   minLen     shortest word this mode accepts
+ *   bonusMult  multiplier on the length bonus
+ *   addTime    seconds a found word buys back
+ *   refreshAt  words on one board before it is replaced
+ */
+var MODES = {
+  daily:   { timed: true,  minLen: 3, bonusMult: 1, label: 'Sfida del giorno',
+             minWords: 80, minLong: 4 },
+  free:    { timed: true,  minLen: 3, bonusMult: 1, label: '',
+             minWords: 80, minLong: 4 },
+  zen:     { timed: false, minLen: 3, bonusMult: 1, label: 'Senza fretta',
+             minWords: 80, minLong: 4 },
+  long:    { timed: true,  minLen: 5, bonusMult: 2, label: 'Parole lunghe',
+             minWords: 25, minLong: 8 },
+  endless: { timed: true,  minLen: 3, bonusMult: 1, label: 'Infinito',
+             minWords: 80, minLong: 4, addTime: true, refreshAt: 10 }
+};
+
+var ENDLESS_SECONDS = 60;
+
+function modeOf(name) { return MODES[name] || MODES.free; }
+
 /* The daily board is fixed at 3 minutes so scores on it are comparable —
    between one day and the next, and between two people playing it apart. */
 var DAILY_SECONDS = 180;
@@ -151,17 +178,26 @@ function lengthBonus(n) {
   return LENGTH_BONUS[n] || 0;
 }
 
-function scorePath(board, path) {
-  var sum = 0, wordMult = 1;
-  for (var i = 0; i < path.length; i++) {
-    var cell = path[i];
-    sum += VALUES[board.letters[cell]] * board.letterMult[cell];
-    wordMult *= board.wordMult[cell];
-  }
-  return sum * wordMult + lengthBonus(path.length);
+function makeScorer(bonusMult) {
+  return function (board, path) {
+    var sum = 0, wordMult = 1;
+    for (var i = 0; i < path.length; i++) {
+      var cell = path[i];
+      sum += VALUES[board.letters[cell]] * board.letterMult[cell];
+      wordMult *= board.wordMult[cell];
+    }
+    return sum * wordMult + lengthBonus(path.length) * bonusMult;
+  };
 }
 
-function makeBoard(dawg, rng) {
+var scorePath = makeScorer(1);
+
+function makeBoard(dawg, rng, opts) {
+  opts = opts || {};
+  var minLen = opts.minLen || MIN_WORD_LEN;
+  var scorer = opts.scorer || scorePath;
+  var minWords = opts.minWords || BOARD_MIN_WORDS;
+  var minLong = opts.minLong || BOARD_MIN_LONG;
   var best = null;
 
   for (var attempt = 0; attempt < BOARD_TRIES; attempt++) {
@@ -196,67 +232,19 @@ function makeBoard(dawg, rng) {
     board.wordMult[b] = wm;
     board.bonus[b] = 'P×' + wm;
 
-    var solution = dawg.solveBoard(board, MIN_WORD_LEN, scorePath);
+    var solution = dawg.solveBoard(board, minLen, scorer);
     var long = 0;
     solution.forEach(function (v, w) { if (w.length >= 6) long++; });
 
     board.solution = solution;
     if (best === null || solution.size > best.solution.size) best = board;
-    if (solution.size >= BOARD_MIN_WORDS && long >= BOARD_MIN_LONG) return board;
+    if (solution.size >= minWords && long >= minLong) return board;
   }
 
   // Never leave the player without a board; the richest attempt will do.
   return best;
 }
 
-/* ------------------------------------------------------------------ audio */
-
-var Sound = {
-  ctx: null,
-  on: true,
-  ensure: function () {
-    if (!this.ctx) {
-      var C = window.AudioContext || window.webkitAudioContext;
-      if (C) this.ctx = new C();
-    }
-    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
-    return this.ctx;
-  },
-  beep: function (freq, dur, type, gain) {
-    if (!this.on) return;
-    var ctx = this.ensure();
-    if (!ctx) return;
-    var o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type || 'sine';
-    o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(gain || 0.18, ctx.currentTime + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(); o.stop(ctx.currentTime + dur + 0.02);
-  },
-  good: function (len) {
-    var base = 520 + Math.min(len, 8) * 45;
-    this.beep(base, 0.12, 'triangle');
-    var self = this;
-    setTimeout(function () { self.beep(base * 1.5, 0.14, 'triangle', 0.14); }, 70);
-  },
-  bad: function () { this.beep(150, 0.16, 'sawtooth', 0.10); },
-  dupe: function () { this.beep(330, 0.10, 'sine', 0.10); },
-  tick: function () { this.beep(880, 0.05, 'square', 0.05); },
-  over: function () {
-    var self = this, notes = [660, 520, 400, 300];
-    notes.forEach(function (n, i) {
-      setTimeout(function () { self.beep(n, 0.22, 'triangle', 0.16); }, i * 150);
-    });
-  },
-  fanfare: function () {
-    var self = this, notes = [523, 659, 784, 1047];
-    notes.forEach(function (n, i) {
-      setTimeout(function () { self.beep(n, 0.26, 'triangle', 0.17); }, i * 130);
-    });
-  }
-};
 
 /* ------------------------------------------------------------------ store */
 
@@ -318,19 +306,34 @@ function collectBackup() {
     v: 1,
     records: {},
     daily: {},
+    passes: {},
+    activePass: Store.get('activePass', PASSES[0].id),
+    modesPlayed: Store.get('modesPlayed', {}),
     stats: loadStats(),
     trophies: loadTrophies(),
-    playedDates: loadPlayedDates()
+    playedDates: loadPlayedDates(),
+    look: {
+      theme: Store.get('theme', 'bosco'),
+      title: Store.get('title', 't-nessuno'),
+      avatar: Store.get('avatar', 'a-fiore'),
+      tiles: Store.get('tiles', 'classico'),
+      sound: Store.get('sound-pack', 'classico')
+    }
   };
-  [120, 180, 300].forEach(function (s) {
-    var r = Store.get('record.' + s, 0);
-    if (r) out.records[s] = r;
-  });
-  var pre = 'parolinda.daily.';
+
+  // Scanned rather than listed, so a new record key or pass is carried
+  // without anyone remembering to add it here.
   for (var i = 0; i < localStorage.length; i++) {
     var k = localStorage.key(i);
-    if (k && k.indexOf(pre) === 0) {
-      try { out.daily[k.slice(pre.length)] = JSON.parse(localStorage.getItem(k)); } catch (e) {}
+    if (!k || k.indexOf('parolinda.') !== 0) continue;
+    var name = k.slice('parolinda.'.length);
+    var val;
+    try { val = JSON.parse(localStorage.getItem(k)); } catch (e) { continue; }
+
+    if (name.indexOf('record.') === 0) out.records[name.slice(7)] = val;
+    else if (name.indexOf('daily.') === 0) out.daily[name.slice(6)] = val;
+    else if (name.indexOf('pass.') === 0 && name.indexOf('.points') > 0) {
+      out.passes[name.slice(5, name.length - 7)] = val;
     }
   }
   return out;
@@ -352,11 +355,11 @@ function decodeBackup(text) {
  * no-op — which matters when the person tapping is not sure it worked.
  */
 function applyBackup(o) {
-  var n = { records: 0, daily: 0, trophies: 0 };
+  var n = { records: 0, daily: 0, trophies: 0, passes: 0 };
 
-  Object.keys(o.records || {}).forEach(function (s) {
-    if (o.records[s] > Store.get('record.' + s, 0)) {
-      Store.set('record.' + s, o.records[s]);
+  Object.keys(o.records || {}).forEach(function (k) {
+    if (o.records[k] > Store.get('record.' + k, 0)) {
+      Store.set('record.' + k, o.records[k]);
       n.records++;
     }
   });
@@ -364,6 +367,12 @@ function applyBackup(o) {
     if (o.daily[d] > Store.get('daily.' + d, 0)) {
       Store.set('daily.' + d, o.daily[d]);
       n.daily++;
+    }
+  });
+  Object.keys(o.passes || {}).forEach(function (id) {
+    if (o.passes[id] > Store.get('pass.' + id + '.points', 0)) {
+      Store.set('pass.' + id + '.points', o.passes[id]);
+      n.passes++;
     }
   });
 
@@ -381,6 +390,10 @@ function applyBackup(o) {
   });
   Store.set('playedDates', days);
 
+  var modes = Store.get('modesPlayed', {}), theirModes = o.modesPlayed || {};
+  Object.keys(theirModes).forEach(function (m) { modes[m] = true; });
+  Store.set('modesPlayed', modes);
+
   var mine = loadStats(), theirs = o.stats || {};
   var merged = {
     games: Math.max(mine.games || 0, theirs.games || 0),
@@ -392,6 +405,22 @@ function applyBackup(o) {
     merged.bestWord = theirs.bestWord;
   }
   Store.set('stats', merged);
+
+  // Her chosen look only comes across onto a device still on the defaults,
+  // so restoring never silently changes how a device she is using looks.
+  var look = o.look || {};
+  var defaults = { theme: 'bosco', title: 't-nessuno', avatar: 'a-fiore',
+                   tiles: 'classico', 'sound-pack': 'classico' };
+  var mapping = { theme: 'theme', title: 'title', avatar: 'avatar',
+                  tiles: 'tiles', sound: 'sound-pack' };
+  Object.keys(mapping).forEach(function (k) {
+    var storeKey = mapping[k];
+    if (look[k] && Store.get(storeKey, defaults[storeKey]) === defaults[storeKey]) {
+      Store.set(storeKey, look[k]);
+    }
+  });
+
+  if (o.activePass && passUnlocked(o.activePass)) Store.set('activePass', o.activePass);
   return n;
 }
 
@@ -448,16 +477,26 @@ function buildBoardDom(board) {
     el.board.appendChild(d);
     el.tiles.push(d);
   }
+  fxTileEntrance(el.tiles);
 }
 
 function startGame(seconds, mode) {
+  var cfg = modeOf(mode);
+  if (mode === 'endless') seconds = ENDLESS_SECONDS;
   lastRound = { seconds: seconds, mode: mode };
+
   var rng = (mode === 'daily') ? mulberry32(seedFor(todayKey())) : Math.random;
-  var board = makeBoard(dawg, rng);
+  var scorer = makeScorer(cfg.bonusMult);
+  var board = makeBoard(dawg, rng, {
+    minLen: cfg.minLen, scorer: scorer,
+    minWords: cfg.minWords, minLong: cfg.minLong
+  });
 
   game = {
     board: board,
     mode: mode,
+    cfg: cfg,
+    scorer: scorer,
     duration: seconds,
     endsAt: performance.now() + seconds * 1000,
     remaining: seconds * 1000,
@@ -467,6 +506,10 @@ function startGame(seconds, mode) {
     score: 0,
     found: [],
     foundSet: new Set(),
+    boardFound: 0,
+    boards: 1,
+    streak: 0,
+    bestStreak: 0,
     path: [],
     dragging: false,
     tapMode: false,
@@ -481,21 +524,22 @@ function startGame(seconds, mode) {
   el.confirmBar.hidden = true;
   el.pauseOverlay.hidden = true;
   el.btnPause.textContent = 'Pausa';
-  el.modeTag.textContent = mode === 'daily' ? 'Sfida del giorno'
-                         : mode === 'zen' ? 'Senza fretta' : '';
-  el.modeTag.hidden = (mode === 'free');
+  el.modeTag.textContent = cfg.label;
+  el.modeTag.hidden = !cfg.label;
   el.btnDone.hidden = (mode !== 'zen');
+  el.streak.hidden = true;
   el.timer.classList.remove('warn');
   renderTrail();
   show('play');
   requestWakeLock();
+  Sound.start();
   tick();
 }
 
 function tick() {
   if (!game) return;
   if (!game.paused) {
-    if (game.mode === 'zen') {
+    if (!game.cfg.timed) {
       // No clock to run out: count up, and let her stop when she likes.
       game.elapsed = performance.now() - game.startedAt;
       el.timer.textContent = fmtElapsed(game.elapsed);
@@ -508,6 +552,7 @@ function tick() {
         game.lastWarn = secs;
         Sound.tick();
       }
+      if (secs > game.lastWarn) game.lastWarn = 999;   // Infinito buys time back
       if (game.remaining <= 0) { endGame(); return; }
     }
   }
@@ -520,7 +565,7 @@ function togglePause() {
   el.pauseOverlay.hidden = !game.paused;
   el.btnPause.textContent = game.paused ? 'Riprendi' : 'Pausa';
   if (!game.paused) {
-    if (game.mode === 'zen') game.startedAt = performance.now() - game.elapsed;
+    if (!game.cfg.timed) game.startedAt = performance.now() - game.elapsed;
     else game.endsAt = performance.now() + game.remaining;
     requestWakeLock();
   } else {
@@ -559,10 +604,14 @@ function endGame() {
 
   // Senza fretta has no clock, so it cannot set a record. Everything else it
   // does still counts towards levels, totals and the diary.
-  var timed = (g.mode !== 'zen');
-  var key = g.mode === 'daily' ? 'daily.' + todayKey() : 'record.' + g.duration;
-  var prevBest = timed ? Store.get(key, 0) : 0;
-  var beatIt = timed && g.score > prevBest;
+  var timed = g.cfg.timed;
+  var key = null;
+  if (g.mode === 'daily') key = 'daily.' + todayKey();
+  else if (g.mode === 'free') key = 'record.' + g.duration;
+  else if (g.mode === 'long') key = 'record.long.' + g.duration;
+  else if (g.mode === 'endless') key = 'record.endless';
+  var prevBest = (timed && key) ? Store.get(key, 0) : 0;
+  var beatIt = !!(timed && key && g.score > prevBest);
   if (beatIt) Store.set(key, g.score);
 
   var stats = loadStats();
@@ -588,15 +637,35 @@ function endGame() {
   var leveledUp = after.level.n > levelFor(pointsBefore).level.n;
 
   var days = recordDay(todayKey());
+  var modesPlayed = recordMode(g.mode);
+
+  var bestWordScore = 0;
+  g.found.forEach(function (f) { if (f.score > bestWordScore) bestWordScore = f.score; });
+
+  // Did she find the single best word this board had to offer?
+  var topWord = null, topScore = -1;
+  g.board.solution.forEach(function (v, w) {
+    if (v.score > topScore) { topScore = v.score; topWord = w; }
+  });
+  var foundTop = !!(topWord && g.foundSet.has(topWord));
+
+  var passesDone = 0;
+  PASSES.forEach(function (p) { if (passComplete(p.id)) passesDone++; });
+
   var fresh = awardTrophies({
     mode: g.mode, score: g.score, words: g.found.length, longest: longest,
     beatIt: beatIt, prevBest: prevBest, totalWords: stats.words,
-    daysPlayed: Object.keys(days).length, date: todayKey()
+    daysPlayed: Object.keys(days).length, date: todayKey(),
+    streak: g.bestStreak, bestWordScore: bestWordScore, foundTop: foundTop,
+    level: after.level.n, games: stats.games, passesDone: passesDone,
+    hour: new Date().getHours(), modesPlayed: modesPlayed,
+    dailyDays: daysWithDaily()
   });
 
   var freshUnlocks = newlyUnlocked(unlocksBefore);
 
-  if (leveledUp || tieredUp || (beatIt && prevBest > 0)) Sound.fanfare();
+  if (leveledUp) Sound.levelUp();
+  else if (tieredUp || (beatIt && prevBest > 0)) Sound.fanfare();
   else Sound.over();
 
   el.finalScore.textContent = String(g.score);
@@ -606,6 +675,12 @@ function endGame() {
 
   if (!timed) {
     el.recordNote.textContent = 'Senza fretta - ' + fmtElapsed(g.elapsed) + ' di gioco';
+  } else if (g.mode === 'endless') {
+    el.recordNote.textContent = 'Infinito - ' + g.boards + ' tabelloni - record: '
+      + Math.max(prevBest, g.score);
+  } else if (g.mode === 'long') {
+    el.recordNote.textContent = 'Parole lunghe - record su '
+      + Math.round(g.duration / 60) + ' minuti: ' + Math.max(prevBest, g.score);
   } else if (g.mode === 'daily') {
     el.recordNote.textContent = 'Sfida del giorno - il tuo miglior risultato di oggi: '
       + Math.max(prevBest, g.score);
@@ -614,6 +689,10 @@ function endGame() {
       + Math.max(prevBest, g.score);
   }
   el.btnAgain.textContent = g.mode === 'daily' ? 'Riprova la sfida' : 'Gioca ancora';
+
+  if (leveledUp || tieredUp || fresh.length || (beatIt && prevBest > 0)) {
+    setTimeout(function () { fxCelebrate($('screen-over'), 2); }, 120);
+  }
 
   el.levelUp.hidden = !leveledUp;
   if (leveledUp) {
@@ -740,9 +819,10 @@ function submitPath() {
   if (!game) return;
   var p = game.path;
   var word = p.map(function (c) { return game.board.letters[c]; }).join('');
+  var minLen = game.cfg.minLen;
 
-  if (word.length < MIN_WORD_LEN) {
-    if (word.length > 0) toast('Almeno ' + MIN_WORD_LEN + ' lettere', 'bad');
+  if (word.length < minLen) {
+    if (word.length > 0) toast('Almeno ' + minLen + ' lettere', 'bad');
     clearPath();
     return;
   }
@@ -757,21 +837,62 @@ function submitPath() {
     Sound.bad();
     buzz(60);
     flash('bad');
+    game.streak = 0;
+    updateStreak();
     clearPath();
     return;
   }
 
-  var pts = scorePath(game.board, p);
+  var pts = game.scorer(game.board, p);
+  var before = game.score;
   game.score += pts;
   game.found.push({ word: word, score: pts });
   game.foundSet.add(word);
-  el.score.textContent = String(game.score);
+  game.boardFound++;
+  game.streak++;
+  if (game.streak > game.bestStreak) game.bestStreak = game.streak;
+
+  fxCountUp(el.score, before, game.score);
   el.foundCount.textContent = String(game.found.length);
-  toast('+' + pts + '  ' + word.toUpperCase(), 'good');
-  Sound.good(word.length);
+  fxFloatScore(el.holder, el.tiles[p[p.length - 1]].getBoundingClientRect(),
+               '+' + pts, 'good');
+  if (pts >= 60 || game.streak >= 5) fxConfetti(el.holder, pts >= 120 ? 1.4 : 0.9);
+
+  toast(word.toUpperCase(), 'good');
+  Sound.good(word.length, game.streak - 1);
   buzz(25);
   flash('good');
+  updateStreak();
+
+  // Infinito: a word buys time, and a full board is replaced under her.
+  if (game.cfg.addTime) {
+    game.endsAt += (2 + Math.floor(word.length / 2)) * 1000;
+  }
   clearPath();
+  if (game.cfg.refreshAt && game.boardFound >= game.cfg.refreshAt) refreshBoard();
+}
+
+/* Infinito only: swap in a new board without ending the round. */
+function refreshBoard() {
+  var board = makeBoard(dawg, Math.random, {
+    minLen: game.cfg.minLen, scorer: game.scorer,
+    minWords: game.cfg.minWords, minLong: game.cfg.minLong
+  });
+  game.board = board;
+  game.foundSet = new Set();
+  game.boardFound = 0;
+  game.boards++;
+  buildBoardDom(board);
+  renderTrail();
+  Sound.refresh();
+  toast('Nuovo tabellone!', 'good');
+}
+
+function updateStreak() {
+  if (!game || !el.streak) return;
+  var on = game.streak >= 3;
+  el.streak.hidden = !on;
+  if (on) el.streak.textContent = 'serie ×' + game.streak;
 }
 
 function flash(kind) {
@@ -833,7 +954,10 @@ function wireBoard() {
     if (Math.abs(e.clientX - startX) > 8 || Math.abs(e.clientY - startY) > 8) moved = true;
     var cell = tileAt(e.clientX, e.clientY);
     if (cell < 0) return;
-    if (pushCell(cell)) renderTrail();
+    if (pushCell(cell)) {
+      Sound.tap(cell);
+      renderTrail();
+    }
   });
 
   function finish(e) {
@@ -885,6 +1009,8 @@ function refreshHome() {
 
   var eq = equipped();
   applyTheme(eq.theme);
+  applyTileStyle(eq.tiles);
+  applySoundPack(eq.sound);
   $('home-avatar').textContent = avatarGlyph(eq.avatar);
   var tt = titleText(eq.title);
   $('home-title').textContent = tt;
@@ -1105,6 +1231,12 @@ function equipItem(kind, id) {
   if (kind === 'theme') { Store.set('theme', id); applyTheme(id); }
   else if (kind === 'title') Store.set('title', id);
   else if (kind === 'avatar') Store.set('avatar', id);
+  else if (kind === 'tiles') { Store.set('tiles', id); applyTileStyle(id); }
+  else if (kind === 'sound') {
+    Store.set('sound-pack', id);
+    applySoundPack(id);
+    Sound.good(6, 2);          // hear what you just picked
+  }
 }
 
 function renderCollection() {
@@ -1118,7 +1250,11 @@ function renderCollection() {
       total++;
       var ok = isUnlocked(it, ctx);
       if (ok) got++;
-      var current = (kind === 'theme' ? eq.theme : kind === 'title' ? eq.title : eq.avatar);
+      var current = kind === 'theme' ? eq.theme
+                  : kind === 'title' ? eq.title
+                  : kind === 'avatar' ? eq.avatar
+                  : kind === 'tiles' ? eq.tiles
+                  : eq.sound;
       var li = document.createElement('li');
       li.className = 'coll-item' + (ok ? '' : ' locked') + (current === it.id ? ' on' : '');
       li.innerHTML = render(it, ok);
@@ -1148,7 +1284,26 @@ function renderCollection() {
       + '<span class="tbody"><i>' + (ok ? 'Tocca' : howToGet(a)) + '</i></span>';
   });
 
+  build($('coll-tiles'), TILE_STYLES, 'tiles', function (t, ok) {
+    return '<span class="tile-demo" data-demo="' + t.id + '">A</span>'
+      + '<span class="tbody"><b>' + t.name + '</b><i>'
+      + (ok ? 'Tocca per usarlo' : howToGet(t)) + '</i></span>';
+  });
+
+  build($('coll-sounds'), SOUND_PACKS, 'sound', function (p, ok) {
+    return '<span class="glyph-big">♪</span>'
+      + '<span class="tbody"><b>' + p.name + '</b><i>'
+      + (ok ? 'Tocca per sentirlo' : howToGet(p)) + '</i></span>';
+  });
+
   $('coll-count').textContent = got + ' di ' + total + ' sbloccati';
+}
+
+function applyVolume(n) {
+  Sound.volume = n;
+  Array.prototype.forEach.call(document.querySelectorAll('.vol-btn'), function (b) {
+    b.classList.toggle('on', Number(b.dataset.vol) === n);
+  });
 }
 
 function applyTextSize(n) {
@@ -1285,9 +1440,11 @@ function wireBackup() {
     }
     var n = applyBackup(data);
     refreshHome();
-    msg.textContent = (n.records + n.daily) === 0
-      ? 'Fatto: qui i punteggi erano già uguali o migliori.'
-      : 'Ripristinato: ' + n.records + ' record e ' + n.daily + ' sfide.';
+    var moved = n.records + n.daily + n.passes + n.trophies;
+    msg.textContent = moved === 0
+      ? 'Fatto: qui era già tutto uguale o migliore.'
+      : 'Ripristinato: ' + n.records + ' record, ' + n.daily + ' sfide, '
+        + n.passes + ' percorsi, ' + n.trophies + ' trofei.';
     $('import-code').value = '';
   });
 }
@@ -1324,6 +1481,8 @@ function wireUi() {
   el.levelUp = $('level-up');
   el.tierUp = $('tier-up');
   el.newUnlocks = $('new-unlocks');
+  el.streak = $('streak');
+  el.holder = document.querySelector('.board-holder');
   el.newTrophies = $('new-trophies');
   el.durationBtns = document.querySelectorAll('.dur');
 
@@ -1352,6 +1511,16 @@ function wireUi() {
     Sound.ensure();
     requestPersistence();
     startGame(0, 'zen');
+  });
+  $('btn-long').addEventListener('click', function () {
+    Sound.ensure();
+    requestPersistence();
+    startGame(Store.get('duration', 180), 'long');
+  });
+  $('btn-endless').addEventListener('click', function () {
+    Sound.ensure();
+    requestPersistence();
+    startGame(ENDLESS_SECONDS, 'endless');
   });
   el.btnDone.addEventListener('click', function () {
     if (game) endGame();
@@ -1390,14 +1559,15 @@ function wireUi() {
   $('btn-confirm').addEventListener('click', submitPath);
   $('btn-clear').addEventListener('click', clearPath);
 
-  var sound = $('btn-sound');
-  Sound.on = Store.get('sound', true);
-  sound.textContent = Sound.on ? '♪ Suoni: sì' : '♪ Suoni: no';
-  sound.addEventListener('click', function () {
-    Sound.on = !Sound.on;
-    Store.set('sound', Sound.on);
-    sound.textContent = Sound.on ? '♪ Suoni: sì' : '♪ Suoni: no';
+  Array.prototype.forEach.call(document.querySelectorAll('.vol-btn'), function (b) {
+    b.addEventListener('click', function () {
+      var v = Number(b.dataset.vol);
+      Store.set('volume', v);
+      applyVolume(v);
+      if (v > 0) { Sound.ensure(); Sound.good(5, 1); }
+    });
   });
+  applyVolume(Store.get('volume', 2));
 
   $('btn-pass').addEventListener('click', function () {
     renderPass();
@@ -1445,6 +1615,8 @@ function boot() {
       $('btn-play').disabled = false;
       $('btn-daily').disabled = false;
       $('btn-zen').disabled = false;
+      $('btn-long').disabled = false;
+      $('btn-endless').disabled = false;
     })
     .catch(function (err) {
       $('loading').textContent = 'Dizionario non caricato (' + err.message + ')';
