@@ -9,12 +9,12 @@
   --bg-soft: #1b2721;
   --tile: #eef2e9;
   --tile-ink: #16211b;
-  --tile-sel: #7fc79b;
-  --tile-head: #a8ddbc;
-  --accent: #7fc79b;
-  --accent-ink: #0a2015;
-  --accent-deep: #4e8f6d;      /* the pressed edge under the big button */
-  --good: #7fc79b;
+  --tile-sel: #8ab89c;
+  --tile-head: #a7cdb6;
+  --accent: #8ab89c;
+  --accent-ink: #0d1c14;
+  --accent-deep: #55806a;      /* the pressed edge under the big button */
+  --good: #8ab89c;
   --bad: #e59a9a;              /* soft rose: "not a word", not "alarm" */
   --dupe: #9fb9c9;
   --text: #e9f0ea;
@@ -277,7 +277,7 @@ button {
 }
 .board.flash-good { animation: fg .3s ease-out; }
 .board.flash-bad { animation: fb .3s ease-out; }
-@keyframes fg { 0% { box-shadow: 0 0 0 0 rgba(127,199,155,.55); } 100% { box-shadow: 0 0 0 22px rgba(127,199,155,0); } }
+@keyframes fg { 0% { box-shadow: 0 0 0 0 rgba(138,184,156,.55); } 100% { box-shadow: 0 0 0 22px rgba(138,184,156,0); } }
 @keyframes fb { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
 
 .tile {
@@ -320,7 +320,7 @@ button {
 }
 #trail polyline {
   fill: none;
-  stroke: rgba(127, 199, 155, .7);
+  stroke: rgba(138, 184, 156, .7);
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;   /* keeps the trail even under the 4x4 viewBox */
@@ -694,7 +694,7 @@ h3 { font-size: calc(17px * var(--ts)); }
 
 /* Swatches in the collection: background on one diagonal, accent on the
    other, so a theme is recognisable before it is worn. */
-.swatch { background: linear-gradient(135deg, #101815 0 50%, #7fc79b 50% 100%); }
+.swatch { background: linear-gradient(135deg, #101815 0 50%, #8ab89c 50% 100%); }
 .swatch[data-swatch="carta"]      { background: linear-gradient(135deg, #f4f1e8 0 50%, #1f5738 50% 100%); }
 .swatch[data-swatch="notte"]      { background: linear-gradient(135deg, #0a0d0c 0 50%, #6fae8b 50% 100%); }
 .swatch[data-swatch="grano"]      { background: linear-gradient(135deg, #14140f 0 50%, #d8b45c 50% 100%); }
@@ -710,7 +710,7 @@ h3 { font-size: calc(17px * var(--ts)); }
 .swatch[data-swatch="ghiaccio"]   { background: linear-gradient(135deg, #0b1216 0 50%, #86d5e8 50% 100%); }
 
 /* ==================================================================
-   Hero, seasonal track, collection, intro. Plus the polish pass.
+   Hero, pass track, collection, intro. Plus the polish pass.
    ================================================================== */
 
 .hero { display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -755,9 +755,9 @@ h3 { font-size: calc(17px * var(--ts)); }
   font-size: calc(13px * var(--ts));
   white-space: nowrap;
 }
-.season-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pass-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .sglyph { color: var(--accent); font-size: calc(17px * var(--ts)); }
-#season-name {
+#pass-name {
   color: var(--accent);
   font-weight: 700;
   font-size: calc(18px * var(--ts));
@@ -784,10 +784,10 @@ h3 { font-size: calc(17px * var(--ts)); }
   padding: 10px 18px;
 }
 
-/* ------------------------------------------------------------ season track */
+/* ------------------------------------------------------------ pass track */
 
-.season-head { gap: 8px; }
-.season-big-glyph {
+.pass-head { gap: 8px; }
+.pass-big-glyph {
   font-size: calc(46px * var(--ts));
   color: var(--accent);
   line-height: 1;
@@ -938,4 +938,32 @@ h3 { font-size: calc(17px * var(--ts)); }
 @media (prefers-reduced-motion: reduce) {
   .screen.active { animation: none; }
   .bar-fill { transition: none; }
+}
+
+
+/* ------------------------------------------------------------- pass picker */
+
+.track.passes { gap: 6px; }
+.pass-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.pass-item.locked { opacity: .42; cursor: default; }
+.pass-item.on { border-color: var(--accent); }
+.pass-item.on .tbody b { color: var(--accent); }
+.pass-item.done { cursor: default; }
+.pass-item.done .tbody b { color: var(--muted); }
+.pglyph {
+  flex: none;
+  width: 1.6em;
+  text-align: center;
+  color: var(--accent);
+  font-size: calc(21px * var(--ts));
 }

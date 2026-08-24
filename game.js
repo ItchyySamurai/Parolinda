@@ -273,15 +273,14 @@ var Store = {
 };
 
 function loadStats() {
-  var s = Store.get('stats', { games: 0, words: 0, points: 0, bestWord: null });
-  if (s.points === undefined) {
-    // Levels arrived after she had already been playing for weeks. Estimate
-    // the points behind her from the words she has found (they average about
-    // 30 each) so her level reflects that history instead of resetting it.
-    s.points = Math.round((s.words || 0) * 30);
-    Store.set('stats', s);
-  }
-  return s;
+  // Normalised on the way out, since older saves predate some of these fields.
+  var s = Store.get('stats', {});
+  return {
+    games: s.games || 0,
+    words: s.words || 0,
+    points: s.points || 0,
+    bestWord: s.bestWord || null
+  };
 }
 
 /*
@@ -407,7 +406,7 @@ var lastRound = { seconds: 180, mode: 'free' };
 function $(id) { return document.getElementById(id); }
 
 function show(screen) {
-  ['intro', 'home', 'play', 'over', 'diary', 'season', 'collection'].forEach(function (s) {
+  ['intro', 'home', 'play', 'over', 'diary', 'pass', 'collection'].forEach(function (s) {
     $('screen-' + s).classList.toggle('active', s === screen);
   });
 }
@@ -555,8 +554,8 @@ function endGame() {
 
   // Snapshot before anything moves, so we can tell her exactly what changed.
   var unlocksBefore = unlockSnapshot();
-  var season = currentSeason();
-  var tierBefore = seasonProgress(season).tier;
+  var activeId = activePassId();
+  var tierBefore = passProgress(activeId).tier;
 
   // Senza fretta has no clock, so it cannot set a record. Everything else it
   // does still counts towards levels, totals and the diary.
@@ -580,9 +579,10 @@ function endGame() {
   });
   Store.set('stats', stats);
 
-  addSeasonPoints(season.id, g.score);
-  var tierAfter = seasonProgress(season).tier;
-  var tieredUp = tierAfter > tierBefore;
+  addPassPoints(activeId, g.score);
+  var pr = passProgress(activeId);
+  var tieredUp = pr.tier > tierBefore;
+  var movedTo = advanceActivePass();
 
   var after = levelFor(stats.points);
   var leveledUp = after.level.n > levelFor(pointsBefore).level.n;
@@ -622,8 +622,16 @@ function endGame() {
 
   el.tierUp.hidden = !tieredUp;
   if (tieredUp) {
-    el.tierUp.textContent = season.glyph + '  Traguardo ' + tierAfter + ' di '
-      + SEASON_TIERS.length + ' - ' + season.name + '!';
+    var ap = PASSES[passIndex(activeId)];
+    var txt;
+    if (pr.complete) {
+      txt = ap.glyph + '  ' + ap.name + ' completato!';
+      if (movedTo) txt += '   Ora: ' + movedTo.name;
+    } else {
+      txt = ap.glyph + '  Traguardo ' + pr.tier + ' di ' + pr.total
+          + ' - ' + ap.name;
+    }
+    el.tierUp.textContent = txt;
   }
 
   el.newUnlocks.innerHTML = '';
@@ -882,14 +890,14 @@ function refreshHome() {
   $('home-title').textContent = tt;
   $('home-title').hidden = !tt;
 
-  var season = currentSeason();
-  var sp = seasonProgress(season);
-  $('season-glyph').textContent = season.glyph;
-  $('season-name').textContent = season.label;
-  $('season-bar').style.width = sp.pct + '%';
-  $('season-next').textContent = sp.nextAt === null
-    ? 'Stagione completata'
-    : 'Traguardo ' + sp.tier + ' di ' + sp.total + ' \u00b7 mancano ' + sp.toNext + ' punti';
+  var pp = passProgress(activePassId());
+  $('pass-glyph').textContent = pp.pass.glyph;
+  $('pass-name').textContent = pp.pass.name;
+  $('pass-bar').style.width = pp.pct + '%';
+  $('pass-next').textContent = pp.complete
+    ? 'Percorso completato'
+    : 'Traguardo ' + pp.tier + ' di ' + pp.total + ' \u00b7 mancano '
+      + pp.toNext + ' punti';
 
   var d = Store.get('duration', 180);
   Array.prototype.forEach.call(el.durationBtns, function (b) {
@@ -955,18 +963,21 @@ var NEWS_SLIDES = [
         + 'rovescia: giochi con calma e premi <b>Ho finito</b> quando vuoi tu.</p>' },
   { glyph: '\u2605', title: 'Livelli e titoli',
     body: '<p>Ogni partita ti d&agrave; punti, e i punti ti fanno salire di '
-        + '<b>livello</b>: da <i>Curiosa</i> fino a <i>Regina delle parole</i>.</p>'
-        + '<p>I punti che hai gi&agrave; fatto sono stati contati.</p>' },
+        + '<b>livello</b>: da <i>Curiosa</i> fino a <i>Regina delle parole</i>. '
+        + 'Sono <b>30 livelli</b> in tutto.</p>'
+        + '<p>Si parte tutte dal <b>livello 1</b>, da zero: il conto dei punti '
+        + 'comincia adesso. Le partite di prima restano nel diario.</p>' },
   { glyph: '\u25C6', title: 'Trofei e diario',
     body: '<p>Ci sono <b>13 trofei</b> da conquistare.</p><p>Nel <b>diario</b> '
         + 'trovi i tuoi numeri e un <b>calendario</b> con tutte le sfide del '
         + 'giorno che hai giocato.</p>' },
-  { glyph: '\u2600', title: 'La stagione',
-    body: '<p>Ogni stagione ha <b>8 traguardi</b> con premi: temi, titoli e '
-        + 'simboli da mettere accanto al tuo nome.</p>'
-        + '<p>Le stagioni <b>tornano ogni anno</b>: quello che non prendi ora, '
-        + 'lo prendi la prossima volta. Non c&rsquo;&egrave; fretta e non '
-        + 'si perde niente.</p>' },
+  { glyph: '\u2726', title: 'I percorsi',
+    body: '<p>Ci sono <b>12 percorsi</b>, uno dopo l&rsquo;altro. Ognuno ha '
+        + '<b>5 traguardi</b> che regalano temi, titoli e simboli da mettere '
+        + 'accanto al tuo nome.</p>'
+        + '<p>Ne fai <b>uno alla volta</b>, quello che scegli tu. Quando lo '
+        + 'finisci si apre il successivo.</p>'
+        + '<p>Non scadono mai: ti aspettano dove li hai lasciati.</p>' },
   { glyph: '\u0041', title: 'Si legge meglio',
     body: '<p>Nel menu puoi scegliere la <b>dimensione del testo</b>: normale, '
         + 'grande o molto grande.</p><p>E puoi cambiare i <b>colori</b> dalla '
@@ -1016,39 +1027,76 @@ function maybeIntro() {
   startIntro((s.games || 0) === 0 ? INTRO_SLIDES : NEWS_SLIDES);
 }
 
-/* ----------------------------------------------------------------- season */
+/* ------------------------------------------------------------------- pass */
 
-function renderSeason() {
-  var s = currentSeason();
-  var p = seasonProgress(s);
-  var bestEver = bestTierForKey(s.key);
+function renderPass() {
+  var id = activePassId();
+  var pr = passProgress(id);
 
-  $('season-heading').textContent = s.label;
-  $('season-big-glyph').textContent = s.glyph;
-  $('season-tier-big').textContent = 'Traguardo ' + p.tier + ' di ' + p.total;
-  $('season-bar2').style.width = p.pct + '%';
-  $('season-note').textContent = p.nextAt === null
-    ? 'Hai completato la stagione. Brava!'
-    : 'Mancano ' + p.toNext + ' punti al traguardo ' + (p.tier + 1)
-      + ' \u00b7 ' + p.points + ' punti in questa stagione';
+  $('pass-heading').textContent = pr.pass.name;
+  $('pass-big-glyph').textContent = pr.pass.glyph;
+  $('pass-tier-big').textContent = 'Traguardo ' + pr.tier + ' di ' + pr.total;
+  $('pass-bar2').style.width = pr.pct + '%';
+  $('pass-note').textContent = pr.complete
+    ? 'Percorso completato. Brava!'
+    : 'Mancano ' + pr.toNext + ' punti al traguardo ' + (pr.tier + 1)
+      + ' \u00b7 ' + pr.points + ' punti in questo percorso';
 
-  var track = $('season-track');
+  var track = $('pass-track');
   track.innerHTML = '';
-  for (var i = 1; i <= SEASON_TIERS.length; i++) {
-    var reached = p.tier >= i;
-    var owned = bestEver >= i;
-    var rewards = rewardsForTier(s.key, i);
+  for (var i = 1; i <= pr.total; i++) {
+    var reached = pr.tier >= i;
+    var rewards = rewardsForTier(id, i);
     var li = document.createElement('li');
-    li.className = 'tier' + (reached ? ' reached' : (owned ? ' owned' : ''));
+    li.className = 'tier' + (reached ? ' reached' : '');
     li.innerHTML = '<span class="tier-num">' + i + '</span>'
-      + '<span class="tier-body"><b>' + SEASON_TIERS[i - 1] + ' punti</b><i>'
+      + '<span class="tier-body"><b>' + pr.tiers[i - 1] + ' punti</b><i>'
       + (rewards.length
           ? rewards.map(function (r) { return r.kind + ': ' + r.name; }).join('  \u00b7  ')
           : 'Nessun premio')
       + '</i></span>'
-      + '<span class="tier-mark">' + (owned ? '\u2713' : '') + '</span>';
+      + '<span class="tier-mark">' + (reached ? '\u2713' : '') + '</span>';
     track.appendChild(li);
   }
+
+  renderPassList();
+}
+
+function renderPassList() {
+  var list = $('pass-list');
+  var active = activePassId();
+  list.innerHTML = '';
+
+  PASSES.forEach(function (p, i) {
+    var unlocked = passUnlocked(p.id);
+    var complete = passComplete(p.id);
+    var pr = passProgress(p.id);
+    var li = document.createElement('li');
+    li.className = 'pass-item'
+      + (unlocked ? '' : ' locked')
+      + (p.id === active ? ' on' : '')
+      + (complete ? ' done' : '');
+    li.innerHTML = '<span class="pglyph">' + p.glyph + '</span>'
+      + '<span class="tbody"><b>' + p.name + '</b><i>'
+      + (!unlocked
+          ? 'Finisci ' + PASSES[i - 1].name + ' per aprirlo'
+          : complete
+            ? 'Completato'
+            : 'Traguardo ' + pr.tier + ' di ' + pr.total
+              + (p.id === active ? ' \u00b7 in corso' : ''))
+      + '</i></span>'
+      + '<span class="tier-mark">'
+      + (complete ? '\u2713' : (p.id === active ? '\u25cf' : '')) + '</span>';
+
+    if (unlocked && !complete && p.id !== active) {
+      li.addEventListener('click', function () {
+        setActivePass(p.id);
+        renderPass();
+        refreshHome();
+      });
+    }
+    list.appendChild(li);
+  });
 }
 
 /* ------------------------------------------------------------- collection */
@@ -1351,11 +1399,11 @@ function wireUi() {
     sound.textContent = Sound.on ? '♪ Suoni: sì' : '♪ Suoni: no';
   });
 
-  $('btn-season').addEventListener('click', function () {
-    renderSeason();
-    show('season');
+  $('btn-pass').addEventListener('click', function () {
+    renderPass();
+    show('pass');
   });
-  $('btn-season-back').addEventListener('click', function () {
+  $('btn-pass-back').addEventListener('click', function () {
     refreshHome();
     show('home');
   });

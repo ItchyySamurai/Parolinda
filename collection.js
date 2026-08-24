@@ -1,200 +1,232 @@
 /*
- * Themes, titles, avatars and the seasonal track.
+ * Themes, titles, avatars and the pass track.
  *
- * The one rule carried over from progress.js: nothing is ever taken away.
- * Seasons here ROTATE rather than expire — Estate 2027 offers exactly what
- * Estate 2026 offered, so anything she doesn't reach this time comes back
- * around. That keeps the whole shape of a season pass (a track, tiers, things
- * to work towards) without the moment where the game tells her she lost
- * something by living her life.
+ * Twelve passes in a fixed sequence. The first is open from the start; each
+ * one unlocks the next when it is finished. Only one is active at a time and
+ * she chooses which — points from a round go to whichever pass she has picked.
  *
- * Depends on Store from game.js. Nothing runs at load time.
+ * There is no calendar anywhere in here. A pass cannot run out, cannot be
+ * missed, and waits exactly where she left it. That is the whole design: the
+ * shape of a pass — a track, tiers, rewards to climb towards — with none of
+ * the parts that exist to make someone feel late.
+ *
+ * Depends on Store, loadStats, levelFor and loadTrophies from elsewhere.
+ * Nothing here runs at load time.
  */
 
 'use strict';
 
-/* ------------------------------------------------------------------ themes */
-
-var THEMES = [
-  { id: 'bosco',    name: 'Bosco',    unlock: { type: 'free' } },
-  { id: 'carta',    name: 'Carta',    unlock: { type: 'level', n: 3 } },
-  { id: 'notte',    name: 'Notte',    unlock: { type: 'level', n: 7 } },
-  { id: 'grano',    name: 'Grano',    unlock: { type: 'level', n: 12 } },
-  { id: 'inchiostro', name: 'Inchiostro', unlock: { type: 'level', n: 18 } },
-  { id: 'oro',      name: 'Oro',      unlock: { type: 'level', n: 25 } },
-  { id: 'lavanda',  name: 'Lavanda',  unlock: { type: 'season', key: 'primavera', tier: 4 } },
-  { id: 'mare',     name: 'Mare',     unlock: { type: 'season', key: 'estate', tier: 4 } },
-  { id: 'tramonto', name: 'Tramonto', unlock: { type: 'season', key: 'autunno', tier: 4 } },
-  { id: 'neve',     name: 'Neve',     unlock: { type: 'season', key: 'inverno', tier: 4 } },
-  { id: 'ciliegio', name: 'Ciliegio', unlock: { type: 'season', key: 'primavera', tier: 8 } },
-  { id: 'corallo',  name: 'Corallo',  unlock: { type: 'season', key: 'estate', tier: 8 } },
-  { id: 'castagna', name: 'Castagna', unlock: { type: 'season', key: 'autunno', tier: 8 } },
-  { id: 'ghiaccio', name: 'Ghiaccio', unlock: { type: 'season', key: 'inverno', tier: 8 } }
-];
-
-/* ------------------------------------------------------------------ titles */
-
-var TITLES = [
-  { id: 't-nessuno',   text: '(nessun titolo)',        unlock: { type: 'free' } },
-  { id: 't-amica',     text: 'Amica delle parole',     unlock: { type: 'level', n: 2 } },
-  { id: 't-curiosa',   text: 'Spirito curioso',        unlock: { type: 'level', n: 5 } },
-  { id: 't-sveglia',   text: 'Mente sveglia',          unlock: { type: 'level', n: 9 } },
-  { id: 't-lince',     text: 'Occhio di lince',        unlock: { type: 'level', n: 14 } },
-  { id: 't-penna',     text: 'Penna d’oro',            unlock: { type: 'level', n: 20 } },
-  { id: 't-leggenda',  text: 'Leggenda vivente',       unlock: { type: 'level', n: 27 } },
-  { id: 't-calma',     text: 'Anima calma',            unlock: { type: 'trophy', id: 'calma' } },
-  { id: 't-paziente',  text: 'Cuore paziente',         unlock: { type: 'trophy', id: 'mese' } },
-  { id: 't-mille',     text: 'Collezionista di parole', unlock: { type: 'trophy', id: 'mille' } },
-
-  { id: 't-fiore',     text: 'Fiore di primavera',     unlock: { type: 'season', key: 'primavera', tier: 1 } },
-  { id: 't-rondine',   text: 'Rondine di marzo',       unlock: { type: 'season', key: 'primavera', tier: 3 } },
-  { id: 't-giardino',  text: 'Signora del giardino',   unlock: { type: 'season', key: 'primavera', tier: 6 } },
-  { id: 't-sole',      text: 'Sole d’estate',          unlock: { type: 'season', key: 'estate', tier: 1 } },
-  { id: 't-onda',      text: 'Voce del mare',          unlock: { type: 'season', key: 'estate', tier: 3 } },
-  { id: 't-lucciola',  text: 'Lucciola di luglio',     unlock: { type: 'season', key: 'estate', tier: 6 } },
-  { id: 't-foglia',    text: 'Foglia d’autunno',       unlock: { type: 'season', key: 'autunno', tier: 1 } },
-  { id: 't-nebbia',    text: 'Passo nella nebbia',     unlock: { type: 'season', key: 'autunno', tier: 3 } },
-  { id: 't-vendemmia', text: 'Cuore di vendemmia',     unlock: { type: 'season', key: 'autunno', tier: 6 } },
-  { id: 't-fiocco',    text: 'Fiocco d’inverno',       unlock: { type: 'season', key: 'inverno', tier: 1 } },
-  { id: 't-camino',    text: 'Calore del camino',      unlock: { type: 'season', key: 'inverno', tier: 3 } },
-  { id: 't-stella',    text: 'Stella di dicembre',     unlock: { type: 'season', key: 'inverno', tier: 6 } }
-];
-
-/* ----------------------------------------------------------------- avatars */
-
-var AVATARS = [
-  { id: 'a-fiore',   glyph: '❀', unlock: { type: 'free' } },
-  { id: 'a-foglia',  glyph: '❦', unlock: { type: 'level', n: 4 } },
-  { id: 'a-stella',  glyph: '★', unlock: { type: 'level', n: 8 } },
-  { id: 'a-luna',    glyph: '☾', unlock: { type: 'level', n: 11 } },
-  { id: 'a-sole',    glyph: '☀', unlock: { type: 'level', n: 16 } },
-  { id: 'a-quadri',  glyph: '❖', unlock: { type: 'level', n: 22 } },
-  { id: 'a-corona',  glyph: '♛', unlock: { type: 'level', n: 30 } },
-  { id: 'a-nota',    glyph: '♪', unlock: { type: 'trophy', id: 'venti' } },
-  { id: 'a-cuore',   glyph: '❤', unlock: { type: 'trophy', id: 'settimana' } },
-  { id: 'a-tulipano', glyph: '✿', unlock: { type: 'season', key: 'primavera', tier: 2 } },
-  { id: 'a-conchiglia', glyph: '❁', unlock: { type: 'season', key: 'estate', tier: 2 } },
-  { id: 'a-ghianda', glyph: '❧', unlock: { type: 'season', key: 'autunno', tier: 2 } },
-  { id: 'a-neve',    glyph: '❄', unlock: { type: 'season', key: 'inverno', tier: 2 } },
-  { id: 'a-scintilla', glyph: '✦', unlock: { type: 'season', key: 'primavera', tier: 7 } },
-  { id: 'a-raggio',  glyph: '✷', unlock: { type: 'season', key: 'estate', tier: 7 } },
-  { id: 'a-spiga',   glyph: '❈', unlock: { type: 'season', key: 'autunno', tier: 7 } },
-  { id: 'a-cristallo', glyph: '❉', unlock: { type: 'season', key: 'inverno', tier: 7 } }
-];
-
-/* ----------------------------------------------------------------- seasons */
+/* ------------------------------------------------------------------ passes */
 
 /*
- * Meteorological seasons, which is how Italians talk about them: primavera is
- * March to May, and so on. Inverno straddles the new year, so December belongs
- * to the winter named for that year.
+ * Five tiers each. The base cost is scaled up as the sequence goes on, so the
+ * twelfth pass is a real undertaking and the first is a week or so of play.
  */
-var SEASON_KEYS = ['inverno', 'primavera', 'estate', 'autunno'];
+var PASS_BASE_TIERS = [400, 1200, 2400, 4200, 6500];
 
-var SEASON_INFO = {
-  primavera: { name: 'Primavera', months: [2, 3, 4],  glyph: '✿' },
-  estate:    { name: 'Estate',    months: [5, 6, 7],  glyph: '☀' },
-  autunno:   { name: 'Autunno',   months: [8, 9, 10], glyph: '❧' },
-  inverno:   { name: 'Inverno',   months: [11, 0, 1], glyph: '❄' }
-};
+var PASSES = [
+  { id: 'p01', name: 'Il giardino',        glyph: '✿', theme: 'lavanda' },
+  { id: 'p02', name: 'Il mare',            glyph: '❁', theme: 'mare' },
+  { id: 'p03', name: 'Il tramonto',        glyph: '☀', theme: 'tramonto' },
+  { id: 'p04', name: 'Il bosco d’autunno', glyph: '❧', theme: 'castagna' },
+  { id: 'p05', name: 'La neve',            glyph: '❄', theme: 'neve' },
+  { id: 'p06', name: 'Il ciliegio',        glyph: '✾', theme: 'ciliegio' },
+  { id: 'p07', name: 'Il grano',           glyph: '❋', theme: 'grano' },
+  { id: 'p08', name: 'Il corallo',         glyph: '❀', theme: 'corallo' },
+  { id: 'p09', name: 'La notte',           glyph: '☾', theme: 'notte' },
+  { id: 'p10', name: 'L’inchiostro',  glyph: '✒', theme: 'inchiostro' },
+  { id: 'p11', name: 'Il ghiaccio',        glyph: '❉', theme: 'ghiaccio' },
+  { id: 'p12', name: 'L’oro',         glyph: '★', theme: 'oro' }
+];
 
-/* Eight tiers. Generous on purpose: reaching the end takes roughly three or
-   four weeks of ordinary play out of a season that lasts three months. */
-var SEASON_TIERS = [500, 1500, 3000, 5500, 9000, 13500, 18500, 24000];
-
-function seasonKeyFor(month) {
-  if (month >= 2 && month <= 4) return 'primavera';
-  if (month >= 5 && month <= 7) return 'estate';
-  if (month >= 8 && month <= 10) return 'autunno';
-  return 'inverno';
+function passIndex(id) {
+  for (var i = 0; i < PASSES.length; i++) if (PASSES[i].id === id) return i;
+  return 0;
 }
 
-function currentSeason(now) {
-  var d = now || new Date();
-  var m = d.getMonth(), y = d.getFullYear();
-  var key = seasonKeyFor(m);
-  // January and February belong to the winter that began the previous December.
-  var year = (key === 'inverno' && m < 2) ? y - 1 : y;
-  return {
-    key: key,
-    year: year,
-    id: year + '-' + key,
-    name: SEASON_INFO[key].name,
-    glyph: SEASON_INFO[key].glyph,
-    label: SEASON_INFO[key].name + ' ' + (key === 'inverno' ? year + '/' + (year + 1) : year)
-  };
+function passTiers(index) {
+  var scale = 1 + 0.25 * index;
+  return PASS_BASE_TIERS.map(function (v) {
+    return Math.round(v * scale / 50) * 50;
+  });
 }
 
-function seasonPoints(id) { return Store.get('season.' + id + '.points', 0); }
+function passPoints(id) { return Store.get('pass.' + id + '.points', 0); }
 
-function addSeasonPoints(id, n) {
-  var p = seasonPoints(id) + n;
-  Store.set('season.' + id + '.points', p);
+function addPassPoints(id, n) {
+  var p = passPoints(id) + n;
+  Store.set('pass.' + id + '.points', p);
   return p;
 }
 
-/* Highest tier reached, 0 to 8. */
-function tierFor(points) {
+function tierOf(points, tiers) {
   var t = 0;
-  for (var i = 0; i < SEASON_TIERS.length; i++) {
-    if (points >= SEASON_TIERS[i]) t = i + 1;
-  }
+  for (var i = 0; i < tiers.length; i++) if (points >= tiers[i]) t = i + 1;
   return t;
 }
 
-/*
- * The best tier she has ever reached in this season of the year, across every
- * year she has played it. This is what makes a rotating season additive: a
- * later run can only ever push it higher.
- */
-function bestTierForKey(key) {
-  var best = 0;
-  for (var i = 0; i < localStorage.length; i++) {
-    var k = localStorage.key(i);
-    if (!k || k.indexOf('parolinda.season.') !== 0) continue;
-    if (k.indexOf('-' + key + '.points') === -1) continue;
-    var pts = 0;
-    try { pts = JSON.parse(localStorage.getItem(k)) || 0; } catch (e) { pts = 0; }
-    var t = tierFor(pts);
-    if (t > best) best = t;
-  }
-  return best;
+function passComplete(id) {
+  var i = passIndex(id);
+  var tiers = passTiers(i);
+  return passPoints(id) >= tiers[tiers.length - 1];
 }
 
-function seasonProgress(season) {
-  var pts = seasonPoints(season.id);
-  var tier = tierFor(pts);
-  var nextAt = tier < SEASON_TIERS.length ? SEASON_TIERS[tier] : null;
-  var prevAt = tier > 0 ? SEASON_TIERS[tier - 1] : 0;
+/* The first pass is always open; every later one waits for the previous. */
+function passUnlocked(id) {
+  var i = passIndex(id);
+  if (i === 0) return true;
+  return passComplete(PASSES[i - 1].id);
+}
+
+function passProgress(id) {
+  var i = passIndex(id);
+  var tiers = passTiers(i);
+  var pts = passPoints(id);
+  var tier = tierOf(pts, tiers);
+  var nextAt = tier < tiers.length ? tiers[tier] : null;
+  var prevAt = tier > 0 ? tiers[tier - 1] : 0;
   return {
+    pass: PASSES[i],
+    index: i,
+    tiers: tiers,
     points: pts,
     tier: tier,
-    total: SEASON_TIERS.length,
+    total: tiers.length,
     nextAt: nextAt,
     toNext: nextAt === null ? 0 : nextAt - pts,
+    complete: nextAt === null,
     pct: nextAt === null ? 100
       : Math.max(0, Math.min(100, Math.round((pts - prevAt) * 100 / (nextAt - prevAt))))
   };
 }
 
-/* Everything a given tier of a given season hands over. */
-function rewardsForTier(key, tier) {
+function activePassId() {
+  var id = Store.get('activePass', PASSES[0].id);
+  // Never leave her pointed at something she cannot progress.
+  if (!passUnlocked(id)) return PASSES[0].id;
+  return id;
+}
+
+function setActivePass(id) {
+  if (passUnlocked(id)) Store.set('activePass', id);
+}
+
+/* After finishing one, move her on to the next rather than banking points
+   into something already full. Returns the pass she was moved to, or null. */
+function advanceActivePass() {
+  var id = activePassId();
+  if (!passComplete(id)) return null;
+  for (var i = passIndex(id) + 1; i < PASSES.length; i++) {
+    if (passUnlocked(PASSES[i].id) && !passComplete(PASSES[i].id)) {
+      Store.set('activePass', PASSES[i].id);
+      return PASSES[i];
+    }
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ themes */
+
+var THEMES = [
+  { id: 'bosco', name: 'Bosco', unlock: { type: 'free' } },
+  { id: 'carta', name: 'Carta', unlock: { type: 'level', n: 3 } }
+];
+
+/* Each pass hands over its own theme at the last tier. */
+PASSES.forEach(function (p, i) {
+  var names = {
+    lavanda: 'Lavanda', mare: 'Mare', tramonto: 'Tramonto', castagna: 'Castagna',
+    neve: 'Neve', ciliegio: 'Ciliegio', grano: 'Grano', corallo: 'Corallo',
+    notte: 'Notte', inchiostro: 'Inchiostro', ghiaccio: 'Ghiaccio', oro: 'Oro'
+  };
+  THEMES.push({
+    id: p.theme,
+    name: names[p.theme],
+    unlock: { type: 'pass', pass: p.id, tier: 5 }
+  });
+});
+
+/* ------------------------------------------------------------------ titles */
+
+var TITLES = [
+  { id: 't-nessuno',  text: '(nessun titolo)',         unlock: { type: 'free' } },
+  { id: 't-amica',    text: 'Amica delle parole',      unlock: { type: 'level', n: 2 } },
+  { id: 't-curiosa',  text: 'Spirito curioso',         unlock: { type: 'level', n: 5 } },
+  { id: 't-sveglia',  text: 'Mente sveglia',           unlock: { type: 'level', n: 9 } },
+  { id: 't-lince',    text: 'Occhio di lince',         unlock: { type: 'level', n: 14 } },
+  { id: 't-penna',    text: 'Penna d’oro',        unlock: { type: 'level', n: 20 } },
+  { id: 't-leggenda', text: 'Leggenda vivente',        unlock: { type: 'level', n: 27 } },
+  { id: 't-calma',    text: 'Anima calma',             unlock: { type: 'trophy', id: 'calma' } },
+  { id: 't-paziente', text: 'Cuore paziente',          unlock: { type: 'trophy', id: 'mese' } },
+  { id: 't-mille',    text: 'Collezionista di parole', unlock: { type: 'trophy', id: 'mille' } }
+];
+
+/* Two per pass, at tiers 1 and 3. */
+var PASS_TITLES = [
+  ['Fiore di primavera', 'Signora del giardino'],
+  ['Voce del mare', 'Anima salata'],
+  ['Luce della sera', 'Cuore d’arancio'],
+  ['Foglia d’autunno', 'Passo nella nebbia'],
+  ['Fiocco d’inverno', 'Calore del camino'],
+  ['Petalo leggero', 'Sguardo gentile'],
+  ['Spiga dorata', 'Mani di farina'],
+  ['Respiro profondo', 'Perla nascosta'],
+  ['Occhi di stella', 'Silenzio quieto'],
+  ['Penna sicura', 'Pagina bianca'],
+  ['Passo sicuro', 'Aria limpida'],
+  ['Tesoro paziente', 'Corona di parole']
+];
+
+PASSES.forEach(function (p, i) {
+  TITLES.push({ id: 'tp' + i + 'a', text: PASS_TITLES[i][0],
+                unlock: { type: 'pass', pass: p.id, tier: 1 } });
+  TITLES.push({ id: 'tp' + i + 'b', text: PASS_TITLES[i][1],
+                unlock: { type: 'pass', pass: p.id, tier: 3 } });
+});
+
+/* ----------------------------------------------------------------- avatars */
+
+var AVATARS = [
+  { id: 'a-fiore',  glyph: '❀', unlock: { type: 'free' } },
+  { id: 'a-foglia', glyph: '❦', unlock: { type: 'level', n: 4 } },
+  { id: 'a-stella', glyph: '★', unlock: { type: 'level', n: 8 } },
+  { id: 'a-luna',   glyph: '☾', unlock: { type: 'level', n: 11 } },
+  { id: 'a-sole',   glyph: '☀', unlock: { type: 'level', n: 16 } },
+  { id: 'a-quadri', glyph: '❖', unlock: { type: 'level', n: 22 } },
+  { id: 'a-corona', glyph: '♛', unlock: { type: 'level', n: 30 } },
+  { id: 'a-nota',   glyph: '♪', unlock: { type: 'trophy', id: 'venti' } },
+  { id: 'a-cuore',  glyph: '❤', unlock: { type: 'trophy', id: 'settimana' } }
+];
+
+/* Two per pass, at tiers 2 and 4. */
+var PASS_AVATARS = [
+  ['✿', '❁'], ['♓', '❊'], ['☉', '✵'],
+  ['❧', '☙'], ['❄', '❆'], ['✾', '❂'],
+  ['❋', '❈'], ['✽', '◇'], ['✴', '✦'],
+  ['✒', '✍'], ['❉', '❅'], ['✹', '✷']
+];
+
+PASSES.forEach(function (p, i) {
+  AVATARS.push({ id: 'ap' + i + 'a', glyph: PASS_AVATARS[i][0],
+                 unlock: { type: 'pass', pass: p.id, tier: 2 } });
+  AVATARS.push({ id: 'ap' + i + 'b', glyph: PASS_AVATARS[i][1],
+                 unlock: { type: 'pass', pass: p.id, tier: 4 } });
+});
+
+/* Everything a given tier of a given pass hands over. */
+function rewardsForTier(passId, tier) {
   var out = [];
-  THEMES.forEach(function (t) {
-    if (t.unlock.type === 'season' && t.unlock.key === key && t.unlock.tier === tier) {
-      out.push({ kind: 'Tema', name: t.name, id: t.id });
-    }
-  });
-  TITLES.forEach(function (t) {
-    if (t.unlock.type === 'season' && t.unlock.key === key && t.unlock.tier === tier) {
-      out.push({ kind: 'Titolo', name: t.text, id: t.id });
-    }
-  });
-  AVATARS.forEach(function (a) {
-    if (a.unlock.type === 'season' && a.unlock.key === key && a.unlock.tier === tier) {
-      out.push({ kind: 'Simbolo', name: a.glyph, id: a.id });
-    }
-  });
+  function scan(list, kind, label) {
+    list.forEach(function (it) {
+      var u = it.unlock;
+      if (u.type === 'pass' && u.pass === passId && u.tier === tier) {
+        out.push({ kind: kind, name: label(it), id: it.id });
+      }
+    });
+  }
+  scan(THEMES, 'Tema', function (t) { return t.name; });
+  scan(TITLES, 'Titolo', function (t) { return t.text; });
+  scan(AVATARS, 'Simbolo', function (a) { return a.glyph; });
   return out;
 }
 
@@ -205,7 +237,10 @@ function isUnlocked(item, ctx) {
   if (u.type === 'free') return true;
   if (u.type === 'level') return ctx.level >= u.n;
   if (u.type === 'trophy') return !!ctx.trophies[u.id];
-  if (u.type === 'season') return bestTierForKey(u.key) >= u.tier;
+  if (u.type === 'pass') {
+    var pr = passProgress(u.pass);
+    return pr.tier >= u.tier;
+  }
   return false;
 }
 
@@ -218,7 +253,9 @@ function howToGet(item) {
   var u = item.unlock;
   if (u.type === 'free') return 'Sempre disponibile';
   if (u.type === 'level') return 'Livello ' + u.n;
-  if (u.type === 'season') return SEASON_INFO[u.key].name + ' · traguardo ' + u.tier;
+  if (u.type === 'pass') {
+    return PASSES[passIndex(u.pass)].name + ' · traguardo ' + u.tier;
+  }
   if (u.type === 'trophy') {
     for (var i = 0; i < TROPHIES.length; i++) {
       if (TROPHIES[i].id === u.id) return 'Trofeo: ' + TROPHIES[i].name;
@@ -227,7 +264,6 @@ function howToGet(item) {
   return '';
 }
 
-/* Everything newly unlocked between two snapshots, so a round can announce it. */
 function unlockSnapshot() {
   var ctx = unlockContext();
   var got = {};
@@ -252,7 +288,7 @@ function newlyUnlocked(before) {
   return fresh;
 }
 
-/* ------------------------------------------------------------- what she wears */
+/* ------------------------------------------------------------ what she wears */
 
 function equipped() {
   return {
@@ -264,15 +300,13 @@ function equipped() {
 
 function titleText(id) {
   for (var i = 0; i < TITLES.length; i++) {
-    if (TITLES[i].id === id) return TITLES[i].id === 't-nessuno' ? '' : TITLES[i].text;
+    if (TITLES[i].id === id) return id === 't-nessuno' ? '' : TITLES[i].text;
   }
   return '';
 }
 
 function avatarGlyph(id) {
-  for (var i = 0; i < AVATARS.length; i++) {
-    if (AVATARS[i].id === id) return AVATARS[i].glyph;
-  }
+  for (var i = 0; i < AVATARS.length; i++) if (AVATARS[i].id === id) return AVATARS[i].glyph;
   return AVATARS[0].glyph;
 }
 

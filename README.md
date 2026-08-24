@@ -12,7 +12,7 @@ single dropdown, no build step and no path juggling.
 ```
 index.html  style.css  game.js  dawg.js  dict.bin
 progress.js    levels, trophies, the day diary
-collection.js  themes, titles, avatars, the seasonal track
+collection.js  themes, titles, avatars, the pass track
 manifest.webmanifest  sw.js
 icons/      the PWA icons, L monogram drawn procedurally
 build/      how dict.bin and the icons were made; not needed to run the game
@@ -112,11 +112,11 @@ levels** on cumulative points. The ladder is long on purpose: level 2 after a
 couple of games, level 10 after a few weeks, level 30 after well over a year of
 steady play. She plays a lot, so the ceiling should stay out of reach.
 
-Levels arrived after she had been playing for weeks, so `loadStats()` performs
-a **one-time migration**: if no `points` key exists, it estimates her past
-points from the words she has already found (they average about 30 each). That
-puts a long-standing player around level 9 of 30 rather than resetting her
-to zero.
+Everyone starts at level 1 with zero points, including a player who had the
+older version — that was a deliberate call, so the climb is introduced from its
+beginning rather than dropping someone into the middle of a ladder they never
+saw. Games, words and best word carry over untouched; only the points counter
+starts fresh.
 
 **Trofei** are 13 one-time, permanent awards — a first word, an 8- and a
 10-letter word, 20 and 30 words in a round, three score thresholds, beating her
@@ -130,31 +130,31 @@ and a month calendar: days she played are shaded, days she played the daily
 challenge show the score, and the months page backwards but not into the
 future. Weeks start on Monday.
 
-## La stagione
+## I percorsi
 
-`collection.js` holds a seasonal track: four seasons a year on the Italian
-meteorological calendar (primavera is March to May, and inverno straddles the
-new year), each with **8 traguardi** paying out themes, titles and avatar
-symbols.
+`collection.js` holds **twelve passes in a fixed sequence**. The first is open
+from the start and each one unlocks the next when it is finished. Only one is
+active at a time and she chooses which, from the list on the pass screen;
+points from a round go to whichever pass she has picked. Finishing one moves
+her on automatically, so points are never banked into something already full.
 
-The one departure from how a season pass normally works: **seasons rotate
-rather than expire.** Estate 2027 offers exactly what Estate 2026 offered, and
-`bestTierForKey()` reads the highest tier she has ever reached in that season
-across every year, so a later run can only push it higher. Anything she misses
-comes back around.
+Each pass has **five traguardi** paying out, in order: a title, an avatar
+symbol, a second title, a second symbol, and finally the pass's own theme. Tier
+costs scale by 25% per pass, so *Il giardino* is about a week of play and
+*L'oro* is a real undertaking. Finishing all twelve costs roughly 185,000
+points — a few months of steady play, and still well short of level 30.
 
-That was a deliberate call. A pass earns its engagement from manufactured
-obligation — a deadline, a track you are behind on, rewards you lose by not
-showing up. This one keeps the track, the tiers and the things to work towards
-and drops the moment where the game tells her she lost something by living her
-life. The tiers are also generous: finishing one takes three or four weeks of
-ordinary play out of a season that lasts three months.
+**There is no calendar anywhere in this file.** A pass cannot run out, cannot
+be missed, and waits exactly where she left it. That is the point: the shape of
+a pass — a track, tiers, rewards to climb towards — with none of the parts that
+exist to make someone feel late. It replaced an earlier seasonal version for
+the same reason.
 
 ## La collezione
 
-14 themes, 22 titles and 17 avatar symbols, unlocked by level, by trophy, or
-from the seasonal track, and equipped by tapping. Locked ones stay visible with
-the requirement written underneath.
+14 themes, 34 titles and 33 avatar symbols — 81 things to collect — unlocked
+by level, by trophy, or from the pass track, and equipped by tapping. Locked
+ones stay visible with the requirement written underneath.
 
 Themes work by redefining the same CSS custom properties on
 `:root[data-theme="..."]`, so the entire interface follows without any component

@@ -53,15 +53,15 @@
       <span id="level-next" class="hint"></span>
     </button>
 
-    <!-- Seasonal track. Rotates rather than expires: see collection.js -->
-    <button id="btn-season" class="panel season-strip">
+    <!-- Sequential passes, one active at a time: see collection.js -->
+    <button id="btn-pass" class="panel pass-strip">
       <span class="row-between">
-        <span class="season-name"><span id="season-glyph" class="sglyph">&#9728;</span>
-          <span id="season-name">Stagione</span></span>
-        <span class="chev">Stagione &rsaquo;</span>
+        <span class="pass-title-row"><span id="pass-glyph" class="sglyph">&#10047;</span>
+          <span id="pass-name">Percorso</span></span>
+        <span class="chev">Percorsi &rsaquo;</span>
       </span>
-      <span class="bar"><span id="season-bar" class="bar-fill"></span></span>
-      <span id="season-next" class="hint"></span>
+      <span class="bar"><span id="pass-bar" class="bar-fill"></span></span>
+      <span id="pass-next" class="hint"></span>
     </button>
 
     <!-- The daily board: same letters all day, retry as often as you like. -->
@@ -252,24 +252,28 @@
   </div>
 </section>
 
-<!-- ----------------------------------------------------------- season -->
-<section id="screen-season" class="screen">
+<!-- ------------------------------------------------------------- pass -->
+<section id="screen-pass" class="screen">
   <div class="wrap">
-    <h2 id="season-heading">Stagione</h2>
+    <h2 id="pass-heading">Percorso</h2>
 
-    <div class="card season-head">
-      <span id="season-big-glyph" class="season-big-glyph">&#9728;</span>
-      <span class="big" id="season-tier-big">Traguardo 0 di 8</span>
-      <span class="bar wide"><span id="season-bar2" class="bar-fill"></span></span>
-      <span class="label" id="season-note"></span>
+    <div class="card pass-head">
+      <span id="pass-big-glyph" class="pass-big-glyph">&#10047;</span>
+      <span class="big" id="pass-tier-big">Traguardo 0 di 5</span>
+      <span class="bar wide"><span id="pass-bar2" class="bar-fill"></span></span>
+      <span class="label" id="pass-note"></span>
     </div>
 
-    <ul id="season-track" class="track"></ul>
+    <ul id="pass-track" class="track"></ul>
 
-    <p class="hint boxed">Le stagioni tornano ogni anno. Quello che non riesci a
-      prendere adesso, potrai prenderlo la prossima volta: non si perde niente.</p>
+    <h3>Tutti i percorsi</h3>
+    <ul id="pass-list" class="track passes"></ul>
 
-    <button id="btn-season-back" class="primary">Torna al menu</button>
+    <p class="hint boxed">I percorsi non scadono mai e non si perde niente.
+      Ne fai uno alla volta: tocca quello che vuoi seguire, e quando lo finisci
+      si apre il successivo.</p>
+
+    <button id="btn-pass-back" class="primary">Torna al menu</button>
   </div>
 </section>
 

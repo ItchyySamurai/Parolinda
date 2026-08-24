@@ -6,7 +6,7 @@
  * keeps being served.
  */
 
-var CACHE = 'parolinda-v6';
+var CACHE = 'parolinda-v7';
 
 var ASSETS = [
   './',
