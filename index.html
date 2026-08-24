@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="ts-1">
 
 <!-- ------------------------------------------------------------- home -->
 <section id="screen-home" class="screen active">
@@ -22,10 +22,17 @@
     <p id="greeting" class="greeting">Ciao</p>
     <h1 class="logo">Parolinda</h1>
 
+    <!-- Level strip doubles as the way into the diary. -->
+    <button id="btn-diary" class="level-strip">
+      <span id="level-name" class="level-name">Livello 1</span>
+      <span class="bar"><span id="level-bar" class="bar-fill"></span></span>
+      <span class="hint">Il mio diario &rsaquo;</span>
+    </button>
+
     <!-- The daily board: same letters all day, retry as often as you like.
          This is what stands in for having an opponent. -->
     <div class="card daily">
-      <span class="label">Sfida del giorno · <span id="daily-date"></span></span>
+      <span class="label">Sfida del giorno &middot; <span id="daily-date"></span></span>
       <span id="daily-score" class="daily-score">Non ancora giocata</span>
       <button id="btn-daily" class="primary" disabled>Gioca la sfida</button>
       <span class="hint">Stesso tabellone per tutta la giornata.
@@ -43,27 +50,43 @@
       <button id="btn-play" class="ghost wide" disabled>Partita libera</button>
     </div>
 
-    <p id="loading" class="loading">Carico il dizionario…</p>
+    <div class="card">
+      <span class="label">Senza fretta</span>
+      <button id="btn-zen" class="ghost wide" disabled>Gioca senza tempo</button>
+      <span class="hint">Nessun orologio. Giochi con calma e finisci quando vuoi.</span>
+    </div>
+
+    <p id="loading" class="loading">Carico il dizionario&hellip;</p>
 
     <div class="card stats">
       <div><span class="label">Partite</span><b id="stat-games">0</b></div>
       <div><span class="label">Parole trovate</span><b id="stat-words">0</b></div>
-      <div><span class="label">Parola migliore</span><b id="stat-best">—</b></div>
+      <div><span class="label">Parola migliore</span><b id="stat-best">&mdash;</b></div>
     </div>
 
-    <button id="btn-sound" class="ghost">♪ Suoni: sì</button>
+    <div class="card settings">
+      <button id="btn-sound" class="ghost wide">&#9834; Suoni: s&igrave;</button>
+      <div class="ts-row">
+        <span class="label">Dimensione del testo</span>
+        <div class="seg">
+          <button class="ts-btn s1" data-size="1">A</button>
+          <button class="ts-btn s2" data-size="2">A</button>
+          <button class="ts-btn s3" data-size="3">A</button>
+        </div>
+      </div>
+    </div>
 
     <button id="howto-toggle" class="ghost">Come si gioca</button>
     <div id="howto-body" class="howto" hidden>
-      <p>Collega le lettere <b>vicine</b> — anche in diagonale — per formare
+      <p>Collega le lettere <b>vicine</b> &mdash; anche in diagonale &mdash; per formare
          una parola di almeno <b>3 lettere</b>.</p>
       <p><b>Trascina</b> il dito sulle lettere, oppure <b>tocca</b> una lettera
-         alla volta e poi premi <b>✓</b>.</p>
-      <p>Le caselle colorate valgono di più: <b>L×2</b> moltiplica la lettera,
-         <b>P×3</b> moltiplica tutta la parola.</p>
+         alla volta e poi premi <b>&#10003;</b>.</p>
+      <p>Le caselle colorate valgono di pi&ugrave;: <b>L&times;2</b> moltiplica la lettera,
+         <b>P&times;3</b> moltiplica tutta la parola.</p>
       <p>Le parole lunghe danno punti extra: 5 lettere +5, 6 lettere +10,
-         7 lettere +15, 8 o più +20.</p>
-      <p>Gli accenti non servono: <i>città</i> si scrive <b>CITTA</b>.</p>
+         7 lettere +15, 8 o pi&ugrave; +20.</p>
+      <p>Gli accenti non servono: <i>citt&agrave;</i> si scrive <b>CITTA</b>.</p>
       <p id="dedica" class="dedica"></p>
     </div>
 
@@ -79,11 +102,11 @@
         <button id="btn-share" class="ghost" hidden>Invia</button>
       </div>
 
-      <p class="sep">Hai già un backup? Incollalo qui sotto.</p>
-      <textarea id="import-code" class="code" placeholder="PAROLINDA1:…"></textarea>
+      <p class="sep">Hai gi&agrave; un backup? Incollalo qui sotto.</p>
+      <textarea id="import-code" class="code" placeholder="PAROLINDA1:&hellip;"></textarea>
       <button id="btn-import" class="ghost wide">Ripristina</button>
       <p id="backup-msg" class="hint"></p>
-      <p class="hint">Il ripristino tiene sempre il punteggio più alto fra i
+      <p class="hint">Il ripristino tiene sempre il punteggio pi&ugrave; alto fra i
          due, quindi non cancella niente.</p>
     </div>
   </div>
@@ -98,7 +121,7 @@
     <button id="btn-pause" class="ghost small">Pausa</button>
   </header>
 
-  <div id="mode-tag" class="mode-tag" hidden>Sfida del giorno</div>
+  <div id="mode-tag" class="mode-tag" hidden></div>
   <div id="current" class="current"></div>
 
   <div class="board-holder">
@@ -113,11 +136,12 @@
   </div>
 
   <div id="confirm-bar" class="confirm-bar" hidden>
-    <button id="btn-clear" class="ghost">✕ Cancella</button>
-    <button id="btn-confirm" class="primary small">✓ Conferma</button>
+    <button id="btn-clear" class="ghost">&#10005; Cancella</button>
+    <button id="btn-confirm" class="primary small">&#10003; Conferma</button>
   </div>
 
   <footer class="play-footer">
+    <button id="btn-done" class="primary small" hidden>Ho finito</button>
     <button id="btn-quit" class="ghost small">Esci</button>
   </footer>
 </section>
@@ -126,14 +150,19 @@
 <section id="screen-over" class="screen">
   <div class="wrap">
     <h2 id="praise">Fine partita</h2>
+    <p id="level-up" class="level-up" hidden></p>
+
     <div class="card">
       <span class="big huge" id="final-score">0</span>
-      <span class="label">punti · <span id="final-words">0 parole</span></span>
+      <span class="label">punti &middot; <span id="final-words">0 parole</span></span>
       <span class="label" id="record-note"></span>
     </div>
 
+    <ul id="new-trophies" class="trophies" hidden></ul>
+
     <div class="actions">
       <button id="btn-again" class="primary">Gioca ancora</button>
+      <button id="btn-diary-over" class="ghost">Il mio diario</button>
       <button id="btn-home" class="ghost">Menu</button>
     </div>
 
@@ -146,7 +175,52 @@
   </div>
 </section>
 
+<!-- ------------------------------------------------------------ diary -->
+<section id="screen-diary" class="screen">
+  <div class="wrap">
+    <h2>Il mio diario</h2>
+
+    <div class="card">
+      <span class="big" id="diary-level">Livello 1</span>
+      <span class="bar wide"><span id="diary-bar" class="bar-fill"></span></span>
+      <span class="label" id="diary-next"></span>
+    </div>
+
+    <div class="card stats">
+      <div><span class="label">Partite</span><b id="d-games">0</b></div>
+      <div><span class="label">Parole</span><b id="d-words">0</b></div>
+      <div><span class="label">Punti</span><b id="d-points">0</b></div>
+      <div><span class="label">Giorni</span><b id="d-days">0</b></div>
+    </div>
+
+    <div class="card">
+      <span class="label">La tua parola migliore</span>
+      <b class="best-word" id="d-best">&mdash;</b>
+    </div>
+
+    <h3>Trofei <span id="trophy-count" class="label"></span></h3>
+    <ul id="trophy-list" class="trophies"></ul>
+
+    <h3>Calendario</h3>
+    <div class="card cal-card">
+      <div class="cal-head">
+        <button id="cal-prev" class="ghost small">&lsaquo;</button>
+        <span id="cal-label" class="cal-label"></span>
+        <button id="cal-next" class="ghost small">&rsaquo;</button>
+      </div>
+      <div class="cal-dow">
+        <span>L</span><span>M</span><span>M</span><span>G</span><span>V</span><span>S</span><span>D</span>
+      </div>
+      <div id="cal-grid" class="cal-grid"></div>
+      <span class="hint">I giorni con un numero sono le sfide del giorno che hai giocato.</span>
+    </div>
+
+    <button id="btn-diary-back" class="primary">Torna al menu</button>
+  </div>
+</section>
+
 <script src="dawg.js"></script>
+<script src="progress.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

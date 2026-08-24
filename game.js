@@ -273,7 +273,15 @@ var Store = {
 };
 
 function loadStats() {
-  return Store.get('stats', { games: 0, words: 0, bestWord: null });
+  var s = Store.get('stats', { games: 0, words: 0, points: 0, bestWord: null });
+  if (s.points === undefined) {
+    // Levels arrived after she had already been playing for weeks. Estimate
+    // the points behind her from the words she has found (they average about
+    // 30 each) so her level reflects that history instead of resetting it.
+    s.points = Math.round((s.words || 0) * 30);
+    Store.set('stats', s);
+  }
+  return s;
 }
 
 /*
@@ -307,7 +315,14 @@ function b64decodeUtf8(b64) {
 }
 
 function collectBackup() {
-  var out = { v: 1, records: {}, daily: {}, stats: loadStats() };
+  var out = {
+    v: 1,
+    records: {},
+    daily: {},
+    stats: loadStats(),
+    trophies: loadTrophies(),
+    playedDates: loadPlayedDates()
+  };
   [120, 180, 300].forEach(function (s) {
     var r = Store.get('record.' + s, 0);
     if (r) out.records[s] = r;
@@ -338,7 +353,7 @@ function decodeBackup(text) {
  * no-op — which matters when the person tapping is not sure it worked.
  */
 function applyBackup(o) {
-  var n = { records: 0, daily: 0 };
+  var n = { records: 0, daily: 0, trophies: 0 };
 
   Object.keys(o.records || {}).forEach(function (s) {
     if (o.records[s] > Store.get('record.' + s, 0)) {
@@ -353,10 +368,25 @@ function applyBackup(o) {
     }
   });
 
+  // Trophies are a union, and the earlier award date wins: she earned it then.
+  var have = loadTrophies(), incoming = o.trophies || {};
+  Object.keys(incoming).forEach(function (id) {
+    if (!have[id]) { have[id] = incoming[id]; n.trophies++; }
+    else if (incoming[id] < have[id]) { have[id] = incoming[id]; }
+  });
+  Store.set('trophies', have);
+
+  var days = loadPlayedDates(), theirDays = o.playedDates || {};
+  Object.keys(theirDays).forEach(function (d) {
+    days[d] = Math.max(days[d] || 0, theirDays[d] || 0);
+  });
+  Store.set('playedDates', days);
+
   var mine = loadStats(), theirs = o.stats || {};
   var merged = {
     games: Math.max(mine.games || 0, theirs.games || 0),
     words: Math.max(mine.words || 0, theirs.words || 0),
+    points: Math.max(mine.points || 0, theirs.points || 0),
     bestWord: mine.bestWord || null
   };
   if (theirs.bestWord && (!merged.bestWord || theirs.bestWord.score > merged.bestWord.score)) {
@@ -377,9 +407,16 @@ var lastRound = { seconds: 180, mode: 'free' };
 function $(id) { return document.getElementById(id); }
 
 function show(screen) {
-  ['home', 'play', 'over'].forEach(function (s) {
+  ['home', 'play', 'over', 'diary'].forEach(function (s) {
     $('screen-' + s).classList.toggle('active', s === screen);
   });
+}
+
+/* Counting up, so floor: a round should read 0:00 the instant it starts. */
+function fmtElapsed(ms) {
+  var t = Math.max(0, Math.floor(ms / 1000));
+  var m = (t / 60) | 0, s = t % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
 }
 
 function fmtTime(ms) {
@@ -425,6 +462,8 @@ function startGame(seconds, mode) {
     duration: seconds,
     endsAt: performance.now() + seconds * 1000,
     remaining: seconds * 1000,
+    startedAt: performance.now(),
+    elapsed: 0,
     paused: false,
     score: 0,
     found: [],
@@ -443,7 +482,11 @@ function startGame(seconds, mode) {
   el.confirmBar.hidden = true;
   el.pauseOverlay.hidden = true;
   el.btnPause.textContent = 'Pausa';
-  el.modeTag.hidden = (mode !== 'daily');
+  el.modeTag.textContent = mode === 'daily' ? 'Sfida del giorno'
+                         : mode === 'zen' ? 'Senza fretta' : '';
+  el.modeTag.hidden = (mode === 'free');
+  el.btnDone.hidden = (mode !== 'zen');
+  el.timer.classList.remove('warn');
   renderTrail();
   show('play');
   requestWakeLock();
@@ -453,15 +496,21 @@ function startGame(seconds, mode) {
 function tick() {
   if (!game) return;
   if (!game.paused) {
-    game.remaining = game.endsAt - performance.now();
-    el.timer.textContent = fmtTime(game.remaining);
-    var secs = Math.ceil(game.remaining / 1000);
-    el.timer.classList.toggle('warn', secs <= 15);
-    if (secs <= 5 && secs > 0 && secs < game.lastWarn) {
-      game.lastWarn = secs;
-      Sound.tick();
+    if (game.mode === 'zen') {
+      // No clock to run out: count up, and let her stop when she likes.
+      game.elapsed = performance.now() - game.startedAt;
+      el.timer.textContent = fmtElapsed(game.elapsed);
+    } else {
+      game.remaining = game.endsAt - performance.now();
+      el.timer.textContent = fmtTime(game.remaining);
+      var secs = Math.ceil(game.remaining / 1000);
+      el.timer.classList.toggle('warn', secs <= 15);
+      if (secs <= 5 && secs > 0 && secs < game.lastWarn) {
+        game.lastWarn = secs;
+        Sound.tick();
+      }
+      if (game.remaining <= 0) { endGame(); return; }
     }
-    if (game.remaining <= 0) { endGame(); return; }
   }
   requestAnimationFrame(tick);
 }
@@ -472,7 +521,8 @@ function togglePause() {
   el.pauseOverlay.hidden = !game.paused;
   el.btnPause.textContent = game.paused ? 'Riprendi' : 'Pausa';
   if (!game.paused) {
-    game.endsAt = performance.now() + game.remaining;
+    if (game.mode === 'zen') game.startedAt = performance.now() - game.elapsed;
+    else game.endsAt = performance.now() + game.remaining;
     requestWakeLock();
   } else {
     clearPath();
@@ -503,32 +553,70 @@ function endGame() {
   game = null;
   releaseWakeLock();
 
-  // Lifetime totals, across both modes.
+  // Senza fretta has no clock, so it cannot set a record. Everything else it
+  // does still counts towards levels, totals and the diary.
+  var timed = (g.mode !== 'zen');
+  var key = g.mode === 'daily' ? 'daily.' + todayKey() : 'record.' + g.duration;
+  var prevBest = timed ? Store.get(key, 0) : 0;
+  var beatIt = timed && g.score > prevBest;
+  if (beatIt) Store.set(key, g.score);
+
   var stats = loadStats();
+  var pointsBefore = stats.points || 0;
+  var longest = 0;
   stats.games += 1;
   stats.words += g.found.length;
+  stats.points = pointsBefore + g.score;
   g.found.forEach(function (f) {
+    if (f.word.length > longest) longest = f.word.length;
     if (!stats.bestWord || f.score > stats.bestWord.score) {
       stats.bestWord = { word: f.word, score: f.score };
     }
   });
   Store.set('stats', stats);
 
-  var key = g.mode === 'daily' ? 'daily.' + todayKey() : 'record.' + g.duration;
-  var prevBest = Store.get(key, 0);
-  var beatIt = g.score > prevBest;
-  if (beatIt) Store.set(key, g.score);
+  var after = levelFor(stats.points);
+  var leveledUp = after.level.n > levelFor(pointsBefore).level.n;
 
-  if (beatIt && prevBest > 0) Sound.fanfare(); else Sound.over();
+  var days = recordDay(todayKey());
+  var fresh = awardTrophies({
+    mode: g.mode, score: g.score, words: g.found.length, longest: longest,
+    beatIt: beatIt, prevBest: prevBest, totalWords: stats.words,
+    daysPlayed: Object.keys(days).length, date: todayKey()
+  });
+
+  if (leveledUp || (beatIt && prevBest > 0)) Sound.fanfare(); else Sound.over();
 
   el.finalScore.textContent = String(g.score);
   el.finalWords.textContent = g.found.length + (g.found.length === 1 ? ' parola' : ' parole');
   el.praise.textContent = praiseFor(g, prevBest, beatIt);
-  el.praise.classList.toggle('is-record', beatIt);
-  el.recordNote.textContent = g.mode === 'daily'
-    ? 'Sfida del giorno · il tuo miglior risultato di oggi: ' + Math.max(prevBest, g.score)
-    : 'Record su ' + Math.round(g.duration / 60) + ' minuti: ' + Math.max(prevBest, g.score);
+  el.praise.classList.toggle('is-record', beatIt || leveledUp);
+
+  if (!timed) {
+    el.recordNote.textContent = 'Senza fretta - ' + fmtElapsed(g.elapsed) + ' di gioco';
+  } else if (g.mode === 'daily') {
+    el.recordNote.textContent = 'Sfida del giorno - il tuo miglior risultato di oggi: '
+      + Math.max(prevBest, g.score);
+  } else {
+    el.recordNote.textContent = 'Record su ' + Math.round(g.duration / 60) + ' minuti: '
+      + Math.max(prevBest, g.score);
+  }
   el.btnAgain.textContent = g.mode === 'daily' ? 'Riprova la sfida' : 'Gioca ancora';
+
+  el.levelUp.hidden = !leveledUp;
+  if (leveledUp) {
+    el.levelUp.textContent = 'Livello ' + after.level.n + ' - ' + after.level.name + '!';
+  }
+
+  el.newTrophies.innerHTML = '';
+  el.newTrophies.hidden = !fresh.length;
+  fresh.forEach(function (t) {
+    var li = document.createElement('li');
+    li.className = 'trophy got';
+    li.innerHTML = '<span class="ticon">' + t.icon + '</span>'
+      + '<span class="tbody"><b>' + t.name + '</b><i>' + t.desc + '</i></span>';
+    el.newTrophies.appendChild(li);
+  });
 
   var found = g.found.slice().sort(function (a, b) { return b.score - a.score; });
   el.foundList.innerHTML = '';
@@ -772,11 +860,93 @@ function refreshHome() {
     : 'Non ancora giocata';
 
   var s = loadStats();
+  var lv = levelFor(s.points || 0);
+  el.levelName.textContent = 'Livello ' + lv.level.n + ' - ' + lv.level.name;
+  el.levelBar.style.width = lv.pct + '%';
+
   el.statGames.textContent = String(s.games);
   el.statWords.textContent = String(s.words);
   el.statBest.textContent = s.bestWord
     ? s.bestWord.word.toUpperCase() + ' · ' + s.bestWord.score
     : '—';
+}
+
+function applyTextSize(n) {
+  document.body.classList.remove('ts-1', 'ts-2', 'ts-3');
+  document.body.classList.add('ts-' + n);
+  Array.prototype.forEach.call(document.querySelectorAll('.ts-btn'), function (b) {
+    b.classList.toggle('on', Number(b.dataset.size) === n);
+  });
+}
+
+var diaryMonth = null;
+
+function renderDiary() {
+  var s = loadStats();
+  var lv = levelFor(s.points || 0);
+  $('diary-level').textContent = 'Livello ' + lv.level.n + ' - ' + lv.level.name;
+  $('diary-bar').style.width = lv.pct + '%';
+  $('diary-next').textContent = lv.next
+    ? 'Mancano ' + lv.toNext + ' punti per diventare ' + lv.next.name
+    : 'Hai raggiunto l’ultimo livello';
+
+  $('d-games').textContent = String(s.games || 0);
+  $('d-words').textContent = String(s.words || 0);
+  $('d-points').textContent = String(s.points || 0);
+  $('d-days').textContent = String(daysPlayedCount());
+  $('d-best').textContent = s.bestWord
+    ? s.bestWord.word.toUpperCase() + ' - ' + s.bestWord.score
+    : '-';
+
+  var have = loadTrophies();
+  var list = $('trophy-list');
+  list.innerHTML = '';
+  TROPHIES.forEach(function (t) {
+    var li = document.createElement('li');
+    li.className = 'trophy' + (have[t.id] ? ' got' : '');
+    li.innerHTML = '<span class="ticon">' + t.icon + '</span>'
+      + '<span class="tbody"><b>' + t.name + '</b><i>' + t.desc + '</i></span>';
+    list.appendChild(li);
+  });
+  $('trophy-count').textContent = Object.keys(have).length + ' / ' + TROPHIES.length;
+
+  renderCalendar();
+}
+
+function renderCalendar() {
+  var m = calendarMonth(diaryMonth.y, diaryMonth.m);
+  $('cal-label').textContent = m.label;
+  var grid = $('cal-grid');
+  grid.innerHTML = '';
+  m.cells.forEach(function (c) {
+    var d = document.createElement('div');
+    if (c.blank) { d.className = 'cal-cell blank'; grid.appendChild(d); return; }
+    d.className = 'cal-cell'
+      + (c.played ? ' played' : '')
+      + (c.daily ? ' has-daily' : '')
+      + (c.today ? ' today' : '');
+    d.innerHTML = '<span class="cal-day">' + c.day + '</span>'
+      + (c.daily ? '<span class="cal-score">' + c.daily + '</span>' : '');
+    grid.appendChild(d);
+  });
+
+  // Nothing to see in the future.
+  var now = new Date();
+  $('cal-next').disabled = (diaryMonth.y > now.getFullYear())
+    || (diaryMonth.y === now.getFullYear() && diaryMonth.m >= now.getMonth());
+}
+
+function shiftMonth(delta) {
+  var d = new Date(diaryMonth.y, diaryMonth.m + delta, 1);
+  diaryMonth = { y: d.getFullYear(), m: d.getMonth() };
+  renderCalendar();
+}
+
+function openDiary() {
+  var now = new Date();
+  diaryMonth = { y: now.getFullYear(), m: now.getMonth() };
+  renderDiary();
+  show('diary');
 }
 
 function wireBackup() {
@@ -862,6 +1032,11 @@ function wireUi() {
   el.statGames = $('stat-games');
   el.statWords = $('stat-words');
   el.statBest = $('stat-best');
+  el.levelName = $('level-name');
+  el.levelBar = $('level-bar');
+  el.btnDone = $('btn-done');
+  el.levelUp = $('level-up');
+  el.newTrophies = $('new-trophies');
   el.durationBtns = document.querySelectorAll('.dur');
 
   $('record-label').textContent = 'Il record di ' + PLAYER;
@@ -885,9 +1060,35 @@ function wireUi() {
     requestPersistence();
     startGame(Store.get('duration', 180), 'free');
   });
+  $('btn-zen').addEventListener('click', function () {
+    Sound.ensure();
+    requestPersistence();
+    startGame(0, 'zen');
+  });
+  el.btnDone.addEventListener('click', function () {
+    if (game) endGame();
+  });
   el.btnAgain.addEventListener('click', function () {
     startGame(lastRound.seconds, lastRound.mode);
   });
+
+  $('btn-diary').addEventListener('click', openDiary);
+  $('btn-diary-over').addEventListener('click', openDiary);
+  $('btn-diary-back').addEventListener('click', function () {
+    refreshHome();
+    show('home');
+  });
+  $('cal-prev').addEventListener('click', function () { shiftMonth(-1); });
+  $('cal-next').addEventListener('click', function () { shiftMonth(1); });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.ts-btn'), function (b) {
+    b.addEventListener('click', function () {
+      var n = Number(b.dataset.size);
+      Store.set('textSize', n);
+      applyTextSize(n);
+    });
+  });
+  applyTextSize(Store.get('textSize', 1));
   $('btn-home').addEventListener('click', function () {
     refreshHome();
     show('home');
@@ -933,6 +1134,7 @@ function boot() {
       $('loading').hidden = true;
       $('btn-play').disabled = false;
       $('btn-daily').disabled = false;
+      $('btn-zen').disabled = false;
     })
     .catch(function (err) {
       $('loading').textContent = 'Dizionario non caricato (' + err.message + ')';

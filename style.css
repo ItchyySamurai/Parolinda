@@ -406,3 +406,202 @@ button {
 @media (min-width: 700px) {
   .board-holder { width: min(70vw, 62vh); }
 }
+
+/* ==================================================================
+   Levels, trophies, diary calendar, and the text-size scale.
+   ================================================================== */
+
+/* One multiplier drives every piece of reading text. The board is left out
+   on purpose: its letters are sized to the tile and already large. */
+:root { --ts: 1; }
+body.ts-1 { --ts: 1; }
+body.ts-2 { --ts: 1.13; }
+body.ts-3 { --ts: 1.28; }
+
+.label { font-size: calc(15px * var(--ts)); }
+.hint { font-size: calc(13.5px * var(--ts)); }
+.greeting { font-size: calc(19px * var(--ts)); }
+.daily-score { font-size: calc(22px * var(--ts)); }
+.loading { font-size: calc(15px * var(--ts)); }
+.howto { font-size: calc(16px * var(--ts)); }
+.big { font-size: calc(30px * var(--ts)); }
+h2 { font-size: calc(30px * var(--ts)); }
+h3 { font-size: calc(17px * var(--ts)); }
+.ghost { font-size: calc(17px * var(--ts)); }
+.ghost.small { font-size: calc(15px * var(--ts)); }
+.primary { font-size: calc(24px * var(--ts)); }
+.primary.small { font-size: calc(19px * var(--ts)); }
+.dur { font-size: calc(17px * var(--ts)); }
+.wordlist li { font-size: calc(17px * var(--ts)); }
+.card.stats .label { font-size: calc(12px * var(--ts)); }
+.card.stats b { font-size: calc(17px * var(--ts)); }
+.hud .big { font-size: calc(26px * var(--ts)); }
+.hud .stat .label { font-size: calc(12px * var(--ts)); }
+.current { font-size: calc(30px * var(--ts)); }
+
+/* ------------------------------------------------------------ level bar */
+
+.level-strip {
+  width: min(360px, 100%);
+  background: var(--bg-soft);
+  border: 0;
+  border-radius: 18px;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.level-name {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: calc(18px * var(--ts));
+}
+.bar {
+  display: block;
+  height: 10px;
+  background: var(--bg);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.bar.wide { width: 100%; }
+.bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width .45s ease-out;
+}
+.level-strip .hint { text-align: right; color: var(--muted); }
+
+.level-up {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: .5px;
+  font-size: calc(20px * var(--ts));
+}
+
+/* -------------------------------------------------------------- trophies */
+
+.trophies {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  align-self: stretch;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+}
+.trophy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  opacity: .42;                      /* locked ones stay visible as goals */
+  text-align: left;
+}
+.trophy.got {
+  opacity: 1;
+  border-left: 3px solid var(--accent);
+}
+.ticon {
+  flex: none;
+  width: 1.5em;
+  text-align: center;
+  color: var(--accent);
+  font-size: calc(22px * var(--ts));
+}
+.tbody { display: flex; flex-direction: column; min-width: 0; }
+.tbody b { font-size: calc(15px * var(--ts)); }
+.tbody i {
+  font-style: normal;
+  color: var(--muted);
+  font-size: calc(13px * var(--ts));
+}
+
+/* -------------------------------------------------------------- calendar */
+
+.cal-card { gap: 12px; }
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+.cal-label {
+  font-weight: 700;
+  text-transform: capitalize;
+  font-size: calc(18px * var(--ts));
+}
+.cal-dow, .cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  width: 100%;
+}
+.cal-dow span {
+  text-align: center;
+  color: var(--muted);
+  font-size: calc(12px * var(--ts));
+}
+.cal-cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  overflow: hidden;
+}
+.cal-cell.blank { background: transparent; }
+.cal-day { font-size: calc(12px * var(--ts)); color: var(--muted); }
+.cal-cell.played { background: var(--line); }
+.cal-cell.played .cal-day { color: var(--text); }
+.cal-cell.has-daily { background: var(--accent); }
+.cal-cell.has-daily .cal-day { color: var(--accent-ink); font-weight: 700; }
+.cal-score {
+  font-size: calc(10px * var(--ts));
+  font-weight: 800;
+  color: var(--accent-ink);
+  line-height: 1;
+}
+.cal-cell.today { box-shadow: inset 0 0 0 2px var(--accent); }
+.cal-cell.today.has-daily { box-shadow: inset 0 0 0 2px var(--accent-ink); }
+#cal-next:disabled { opacity: .3; }
+
+/* -------------------------------------------------------------- settings */
+
+.card.settings { gap: 14px; }
+.ts-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.ts-row .seg { align-items: center; }
+.ts-btn {
+  background: var(--bg);
+  color: var(--muted);
+  border: 2px solid transparent;
+  padding: 6px 20px;
+  line-height: 1.1;
+}
+.ts-btn.s1 { font-size: 15px; }
+.ts-btn.s2 { font-size: 20px; }
+.ts-btn.s3 { font-size: 26px; }
+.ts-btn.on { color: var(--accent); border-color: var(--accent); }
+
+.best-word {
+  font-size: calc(22px * var(--ts));
+  color: var(--accent);
+  letter-spacing: 1px;
+  overflow-wrap: anywhere;
+}
