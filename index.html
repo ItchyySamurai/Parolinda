@@ -16,6 +16,21 @@
 </head>
 <body class="ts-1">
 
+<!-- Ambient identity layer: three accent glows, a faint dot grid and the
+     letters of the name drifting behind everything. Fixed, inert, and it
+     follows the theme because the glows are painted in var(--accent). -->
+<div id="bg" aria-hidden="true">
+  <span class="glow g1"></span>
+  <span class="glow g2"></span>
+  <span class="glow g3"></span>
+  <span class="grid"></span>
+  <div class="deco">
+    <span class="d1">P</span><span class="d2">A</span><span class="d3">R</span>
+    <span class="d4">O</span><span class="d5">L</span><span class="d6">I</span>
+    <span class="d7">N</span><span class="d8">D</span><span class="d9">A</span>
+  </div>
+</div>
+
 <!-- ------------------------------------------------------ intro / novita -->
 <section id="screen-intro" class="screen">
   <div class="wrap intro-wrap">

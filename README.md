@@ -212,6 +212,25 @@ rather than snapping, and tiles stagger in when a board is built. **Every effect
 checks `prefers-reduced-motion` and quietly does nothing** if the system asks
 for less movement.
 
+## Visual identity
+
+A fixed layer behind everything (`#bg` in index.html): three accent-coloured
+radial glows, a faint dot grid, and the nine letters of the name scattered and
+rotated at very low opacity. All of it is inert — `pointer-events: none`, its
+own `overflow: hidden` so nothing can widen the page, and `.screen` sits above
+it at `z-index: 1`.
+
+The glows are **radial gradients dimmed by the element opacity rather than a
+translucent colour**. That means they are painted in `var(--accent)` and follow
+every theme for free, with no per-theme value to maintain and no `blur()`
+filter for an old tablet to chew on.
+
+On top of that: a hairline of light along the top edge of every card, a soft
+sheen, a gradient fill on the wordmark, a rule either side of the identity line,
+an accent bar under each `h2` and beside each `h3`, and a glow behind the board.
+Light themes invert the sheen and drop the wordmark gradient, since a pale
+gradient stop would vanish on cream.
+
 ## Accessibility
 
 **Dimensione del testo** on the home screen has three steps. One `--ts`

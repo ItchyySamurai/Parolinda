@@ -1087,3 +1087,185 @@ h3 { font-size: calc(17px * var(--ts)); }
 
 .card.modes .ghost { margin-top: 2px; }
 .card.modes .hint { margin-bottom: 4px; }
+
+/* ==================================================================
+   Visual identity: the ambient layer, and the surface treatment that
+   sits on top of it.
+   ================================================================== */
+
+/* Fixed and inert. Content sits above it via .screen's own stacking. */
+#bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.screen { position: relative; z-index: 1; }
+
+/*
+ * Glows are radial gradients painted in the accent, dimmed by the element's
+ * own opacity rather than a translucent colour — that way they follow every
+ * theme without needing a per-theme value, and there is no blur filter to
+ * make an old tablet work for it.
+ */
+.glow {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, var(--accent) 0%, transparent 70%);
+}
+.g1 { width: 130vw; height: 130vw; left: -55vw; top: -45vw; opacity: .13; }
+.g2 { width: 100vw; height: 100vw; right: -45vw; top: 28vh; opacity: .10; }
+.g3 { width: 90vw;  height: 90vw;  left: -30vw; bottom: -30vw; opacity: .08; }
+
+.grid {
+  position: absolute;
+  inset: 0;
+  opacity: .035;
+  background-image: radial-gradient(var(--text) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* The name, taken apart and left lying in the background. */
+.deco { position: absolute; inset: 0; }
+.deco span {
+  position: absolute;
+  font-weight: 800;
+  color: var(--text);
+  opacity: .028;
+  line-height: 1;
+  font-size: 22vw;
+  user-select: none;
+}
+.d1 { left: -3%;  top: 3%;   transform: rotate(-14deg); }
+.d2 { right: -2%; top: 14%;  transform: rotate(11deg); }
+.d3 { left: 6%;   top: 33%;  transform: rotate(6deg);  font-size: 16vw; }
+.d4 { right: 8%;  top: 44%;  transform: rotate(-9deg); font-size: 28vw; }
+.d5 { left: -4%;  top: 58%;  transform: rotate(15deg); }
+.d6 { right: 14%; top: 70%;  transform: rotate(-5deg); font-size: 14vw; }
+.d7 { left: 10%;  top: 79%;  transform: rotate(8deg); }
+.d8 { right: -3%; bottom: 2%; transform: rotate(-12deg); }
+.d9 { left: 34%;  top: 22%;  transform: rotate(3deg);  font-size: 12vw; }
+
+/* Light themes need the motifs darker, not lighter. */
+:root[data-theme="carta"] .grid { opacity: .05; }
+:root[data-theme="carta"] .deco span { opacity: .045; }
+
+/* ---------------------------------------------------------------- surfaces */
+
+/*
+ * A hairline of light along the top edge and a very soft sheen. Enough to
+ * lift a card off the background without drawing a border around everything.
+ */
+.card, .panel, .intro-card, .howto, .trophy, .tier, .coll-item, .pass-item {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .045), transparent 62%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+:root[data-theme="carta"] .card,
+:root[data-theme="carta"] .panel,
+:root[data-theme="carta"] .intro-card,
+:root[data-theme="carta"] .howto,
+:root[data-theme="carta"] .trophy,
+:root[data-theme="carta"] .tier,
+:root[data-theme="carta"] .coll-item,
+:root[data-theme="carta"] .pass-item {
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, .022), transparent 62%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .10), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+.card.daily {
+  box-shadow: 0 0 0 1px var(--accent) inset,
+              0 6px 22px -12px var(--accent),
+              inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+
+/* ------------------------------------------------------------------- logo */
+
+.logo {
+  background: linear-gradient(175deg, var(--tile-head) 12%, var(--accent) 78%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+/* On the light theme the pale end of that gradient would vanish. */
+:root[data-theme="carta"] .logo {
+  background: none;
+  -webkit-text-fill-color: var(--accent);
+}
+
+/* A rule either side of the identity line under the name. */
+.identity::before, .identity::after {
+  content: "";
+  width: clamp(24px, 12vw, 68px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line), transparent);
+}
+
+/* ---------------------------------------------------------------- headings */
+
+h2 {
+  position: relative;
+  padding-bottom: 10px;
+}
+h2::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 46px;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--accent);
+  opacity: .85;
+}
+
+h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h3::before {
+  content: "";
+  width: 14px;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--accent);
+  flex: none;
+}
+
+/* ------------------------------------------------------------------ board */
+
+.board-holder::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  border-radius: 30%;
+  background: radial-gradient(circle at center, var(--accent) 0%, transparent 68%);
+  opacity: .10;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.primary {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .16), transparent 70%);
+}
+.ghost { background-image: linear-gradient(180deg, rgba(255, 255, 255, .03), transparent 60%); }
+:root[data-theme="carta"] .ghost {
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, .02), transparent 60%);
+}
+
+/* On a wide screen the glows would swamp the layout; rein them in. */
+@media (min-width: 700px) {
+  .g1 { width: 70vw; height: 70vw; left: -25vw; top: -25vw; }
+  .g2 { width: 55vw; height: 55vw; right: -20vw; }
+  .g3 { width: 50vw; height: 50vw; left: -18vw; }
+  .deco span { font-size: 12vw; }
+  .d4 { font-size: 15vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow { opacity: .07; }
+}
