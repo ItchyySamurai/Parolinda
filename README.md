@@ -231,6 +231,28 @@ an accent bar under each `h2` and beside each `h3`, and a glow behind the board.
 Light themes invert the sheen and drop the wordmark gradient, since a pale
 gradient stop would vanish on cream.
 
+## Tablets and orientation
+
+Verified by measurement at 375x812, 600x960, 768x1024, 800x1280, 1024x600,
+1024x768, 1280x800 and 812x375: the board and every control on screen at once,
+tiles at or above the 44px touch target, both corner tiles actually hittable,
+and no sideways overflow on any screen at either text size.
+
+Two rules do the work. Below 700px tall, the board is capped against viewport
+height and the vertical padding tightens - a 1024x600 panel could otherwise
+push the footer off the bottom once the tap-mode confirm bar appeared. Above
+700px wide, cards widen from 360px to 460px and the grids get a max width, so
+a tablet does not show a thin column stranded in the middle.
+
+Below 520px tall in landscape the board is taken **out of the flow** and parked
+on the right, with the controls keeping the remaining width. That started as a
+CSS grid and had to be rewritten: with the board spanning every row it forced
+the rows to its own height and stretched the HUD to 357px.
+
+The manifest asks for **`orientation: any`**. It used to request portrait, which
+gives a bigger board, but locking a tablet upright is worse than the slightly
+smaller landscape board now that landscape is verified.
+
 ## Accessibility
 
 **Dimensione del testo** on the home screen has three steps. One `--ts`
