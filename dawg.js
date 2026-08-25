@@ -9,7 +9,12 @@
  *   bits  0-4   letter index into ALPHABET
  *   bit   5     the node this edge leads to terminates a word
  *   bit   6     last edge of this node's run
- *   bits  7-31  block index of the node this edge leads to
+ *   bit   7     that word is COMMON - one people actually say
+ *   bits  8-31  block index of the node this edge leads to
+ *
+ * The common bit is what lets the game accept every word while only ever
+ * showing her words she might know. 24 bits of block index caps the structure
+ * at 16.7M edges against the 170k it uses.
  */
 
 var ALPHABET = 'abcdefghilmnopqrstuvz';
@@ -45,9 +50,24 @@ Dawg.prototype.has = function (word) {
     var v = this.edge(block, li);
     if (v === -1) return false;
     final = (v >>> 5) & 1;
-    block = v >>> 7;
+    block = v >>> 8;
   }
   return final === 1;
+};
+
+/* A word AND one the frequency data says people use. */
+Dawg.prototype.isCommon = function (word) {
+  var block = ROOT_BLOCK, final = 0, common = 0;
+  for (var i = 0; i < word.length; i++) {
+    var li = LETTER_INDEX[word[i]];
+    if (li === undefined) return false;
+    var v = this.edge(block, li);
+    if (v === -1) return false;
+    final = (v >>> 5) & 1;
+    common = (v >>> 7) & 1;
+    block = v >>> 8;
+  }
+  return final === 1 && common === 1;
 };
 
 /*
@@ -77,11 +97,15 @@ Dawg.prototype.solveBoard = function (board, minLen, scoreFn) {
       var s = scoreFn(board, path.slice(0, len));
       var prev = found.get(word);
       if (prev === undefined || s > prev.score) {
-        found.set(word, { score: s, path: path.slice(0, len) });
+        found.set(word, {
+          score: s,
+          path: path.slice(0, len),
+          common: ((v >>> 7) & 1) === 1
+        });
       }
     }
 
-    var next = v >>> 7;
+    var next = v >>> 8;
     if (next !== 0 && len < 16) {
       var nb = NEIGHBOURS[cell];
       for (var i = 0; i < nb.length; i++) {

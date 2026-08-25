@@ -311,6 +311,58 @@ The result is packed into a DAWG: a deduplicated prefix graph, one uint32 per
 edge, walked directly out of the `ArrayBuffer` so an old tablet never holds
 2.6 million JavaScript strings in memory.
 
+## Common words, and why the game knows the difference
+
+Linda reported that words were "not recognised" or "not correct". Measuring it
+turned up two different problems.
+
+**The dictionary was fine.** 474 everyday words — nouns, every tense of regular
+and irregular verbs, plurals, superlatives, clitics — came back with **zero**
+rejections. 508 irregular verb forms had **one** gap (`stemmo`). Regular
+paradigms were complete.
+
+**What she was reading was not fine.** The end-of-round *"parole migliori che
+ti sono sfuggite"* list is ranked by score, and the highest-scoring words on a
+board are obscure inflections: `INFOIBASI`, `SPAIASSI`, `FRESASSI`, `BITTAR`.
+Every one is a valid Hunspell form and not one is a word anyone has said. Told
+those were the best words, she reasonably concluded the game did not know
+Italian. **The dictionary was right and the presentation was wrong.**
+
+So every word now carries a **common** flag, set from a frequency list built
+from film and TV subtitles — words Italians demonstrably say, in her register.
+The flag is a bit in the DAWG edge rather than a second file, so it costs no
+extra lookup:
+
+```
+letter(5) | final(1) | last(1) | common(1) | child(24)
+```
+
+The tier is `frequency >= 200` **intersected with our own dictionary**, which
+is what makes it safe: proper nouns and English leaking out of the subtitle
+corpus (*Michael*, *season*, *the*) are dropped for free, because the
+dictionary never had them.
+
+The game **accepts everything and shows only common words**. That asymmetry is
+the whole point — refusing a word she legitimately plays is a far worse failure
+than showing her one she does not know, so the full list still does validation.
+It is used in two places:
+
+- the missed-words list shows common words only, falling back to the full set
+  if a board somehow has fewer than six
+- **board generation now requires at least 30 common words.** A board could
+  previously advertise 150 words while only a handful were humanly findable;
+  boards now carry a median of 63 common words
+
+Genuine gaps go in `SUPPLEMENT` in `build_dict.py`. It currently adds 13 words
+the 2020 source predates — `gap` (the one she hit), `app`, `social`, `cloud`,
+`spam`, `router`, `laptop`, `meme` — plus `stemmo`. The script reports only
+entries that turn out to be genuinely absent, so the list cannot rot into
+things already covered.
+
+Frequency data: **hermitdave/FrequencyWords**, OpenSubtitles 2018, MIT licence,
+committed as `build/freq_it_50k.txt`. The full 9 MB list moves this cutoff by
+276 words out of 26,618, which is not worth shipping fourteen times the file.
+
 To rebuild:
 
 ```bash

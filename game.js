@@ -58,15 +58,15 @@ var MIN_WORD_LEN = 3;
  */
 var MODES = {
   daily:   { timed: true,  minLen: 3, bonusMult: 1, label: 'Sfida del giorno',
-             minWords: 80, minLong: 4 },
+             minWords: 80, minLong: 4, minCommon: 30 },
   free:    { timed: true,  minLen: 3, bonusMult: 1, label: '',
-             minWords: 80, minLong: 4 },
+             minWords: 80, minLong: 4, minCommon: 30 },
   zen:     { timed: false, minLen: 3, bonusMult: 1, label: 'Senza fretta',
-             minWords: 80, minLong: 4 },
+             minWords: 80, minLong: 4, minCommon: 30 },
   long:    { timed: true,  minLen: 5, bonusMult: 2, label: 'Parole lunghe',
-             minWords: 25, minLong: 8 },
+             minWords: 25, minLong: 8, minCommon: 8 },
   endless: { timed: true,  minLen: 3, bonusMult: 1, label: 'Infinito',
-             minWords: 80, minLong: 4, addTime: true, refreshAt: 10 }
+             minWords: 80, minLong: 4, minCommon: 30, addTime: true, refreshAt: 10 }
 };
 
 var ENDLESS_SECONDS = 60;
@@ -104,6 +104,13 @@ var VOWELS = 'aeiou';
 
 /* A board must be worth playing before we hand it over. */
 var BOARD_MIN_WORDS = 80;
+
+/*
+ * A board can advertise 150 words while only a handful are words anyone has
+ * said. This is the number that actually decides whether a round feels
+ * generous, so it is checked directly rather than hoped for.
+ */
+var BOARD_MIN_COMMON = 30;
 var BOARD_MIN_LONG = 4;        // words of 6+ letters
 var BOARD_MIN_VOWELS = 5;
 var BOARD_MAX_VOWELS = 9;
@@ -198,6 +205,7 @@ function makeBoard(dawg, rng, opts) {
   var scorer = opts.scorer || scorePath;
   var minWords = opts.minWords || BOARD_MIN_WORDS;
   var minLong = opts.minLong || BOARD_MIN_LONG;
+  var minCommon = opts.minCommon || BOARD_MIN_COMMON;
   var best = null;
 
   for (var attempt = 0; attempt < BOARD_TRIES; attempt++) {
@@ -233,12 +241,18 @@ function makeBoard(dawg, rng, opts) {
     board.bonus[b] = 'P×' + wm;
 
     var solution = dawg.solveBoard(board, minLen, scorer);
-    var long = 0;
-    solution.forEach(function (v, w) { if (w.length >= 6) long++; });
+    var long = 0, common = 0;
+    solution.forEach(function (v, w) {
+      if (w.length >= 6) long++;
+      if (v.common) common++;
+    });
 
     board.solution = solution;
-    if (best === null || solution.size > best.solution.size) best = board;
-    if (solution.size >= minWords && long >= minLong) return board;
+    board.commonCount = common;
+    if (best === null || common > (best.commonCount || 0)) best = board;
+    if (solution.size >= minWords && long >= minLong && common >= minCommon) {
+      return board;
+    }
   }
 
   // Never leave the player without a board; the richest attempt will do.
@@ -488,8 +502,8 @@ function startGame(seconds, mode) {
   var rng = (mode === 'daily') ? mulberry32(seedFor(todayKey())) : Math.random;
   var scorer = makeScorer(cfg.bonusMult);
   var board = makeBoard(dawg, rng, {
-    minLen: cfg.minLen, scorer: scorer,
-    minWords: cfg.minWords, minLong: cfg.minLong
+    minLen: cfg.minLen, scorer: scorer, minWords: cfg.minWords,
+    minLong: cfg.minLong, minCommon: cfg.minCommon
   });
 
   game = {
@@ -744,18 +758,32 @@ function endGame() {
     el.foundList.appendChild(li);
   });
 
-  var missed = [];
+  /*
+   * Ranked by score, this list used to read INFOIBASI, SPAIASSI, BITTAR - all
+   * real Hunspell forms, none of them words a person has said. Linda quite
+   * reasonably concluded the game did not know Italian. Show her only words
+   * the frequency data says people use, and fall back to the full set rather
+   * than show her an empty list.
+   */
+  var missed = [], missedCommon = [];
   g.board.solution.forEach(function (v, w) {
-    if (!g.foundSet.has(w)) missed.push({ word: w, score: v.score });
+    if (g.foundSet.has(w)) return;
+    var item = { word: w, score: v.score };
+    missed.push(item);
+    if (v.common) missedCommon.push(item);
   });
-  missed.sort(function (a, b) { return b.score - a.score; });
+  var shown = missedCommon.length >= 6 ? missedCommon : missed;
+  shown.sort(function (a, b) { return b.score - a.score; });
   el.missedList.innerHTML = '';
-  missed.slice(0, 12).forEach(function (m) {
+  shown.slice(0, 12).forEach(function (m) {
     var li = document.createElement('li');
     li.innerHTML = '<span>' + m.word.toUpperCase() + '</span><b>' + m.score + '</b>';
     el.missedList.appendChild(li);
   });
-  el.missedNote.textContent = 'Sul tabellone c’erano ' + g.board.solution.size + ' parole.';
+  var commonTotal = 0;
+  g.board.solution.forEach(function (v) { if (v.common) commonTotal++; });
+  el.missedNote.textContent = 'Sul tabellone c’erano ' + commonTotal
+    + ' parole comuni, ' + g.board.solution.size + ' in tutto.';
 
   show('over');
 }
@@ -875,8 +903,8 @@ function submitPath() {
 /* Infinito only: swap in a new board without ending the round. */
 function refreshBoard() {
   var board = makeBoard(dawg, Math.random, {
-    minLen: game.cfg.minLen, scorer: game.scorer,
-    minWords: game.cfg.minWords, minLong: game.cfg.minLong
+    minLen: game.cfg.minLen, scorer: game.scorer, minWords: game.cfg.minWords,
+    minLong: game.cfg.minLong, minCommon: game.cfg.minCommon
   });
   game.board = board;
   game.foundSet = new Set();
