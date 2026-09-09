@@ -1,6 +1,6 @@
 # Parolinda
 
-A Ruzzle-style Italian word game, made for Linda. Solo play, fully offline once
+A Ruzzle-style Italian word game. Solo play, fully offline once
 installed, no ads, no accounts, no network calls at any point.
 
 *Parole* + *Linda* — and it reads as *parola linda*, since **lindo/linda** is
